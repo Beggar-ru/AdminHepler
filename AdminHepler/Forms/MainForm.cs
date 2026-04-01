@@ -2,6 +2,8 @@ using AdminHepler.Logger;
 using AdminHepler.Utils;
 using AdminHepler.Models;
 using System.Windows.Forms;
+using AdminHepler.Forms;
+using AdminHepler.Scripts;
 
 namespace AdminHepler
 {
@@ -59,6 +61,20 @@ namespace AdminHepler
             {
                 _logger.Error($"Ошибка при сохранении лога: {ex.Message}");
             }
+        }
+
+        private void btnOffPcTimer_Click(object sender, EventArgs e)
+        {
+            using (var frm = new frmShutdownTimer(_logger))
+            {
+                frm.ShowDialog();
+            }
+        }
+
+        private void btnCancelOffpc_Click(object sender, EventArgs e)
+        {
+            var tools = new Scripts.SystemTools(_logger);
+            tools.AbortShutdown();
         }
     }
 }

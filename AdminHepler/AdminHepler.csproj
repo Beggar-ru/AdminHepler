@@ -10,7 +10,6 @@
 
   <ItemGroup>
     <Folder Include="Logic\" />
-    <Folder Include="Scripts\" />
     <Folder Include="Resources\" />
     <Folder Include="Services\" />
   </ItemGroup>

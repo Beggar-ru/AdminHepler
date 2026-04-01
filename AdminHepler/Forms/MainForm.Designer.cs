@@ -34,6 +34,8 @@ namespace AdminHepler
             btnClearLog = new Button();
             btnCopyLog = new Button();
             btnTestLogger = new Button();
+            btnOffPcTimer = new Button();
+            btnCancelOffpc = new Button();
             SuspendLayout();
             // 
             // rtbLogger
@@ -85,20 +87,42 @@ namespace AdminHepler
             btnTestLogger.TabIndex = 4;
             btnTestLogger.Text = "btnTestLog";
             btnTestLogger.UseVisualStyleBackColor = true;
-            btnTestLogger.Click += this.btnTestLogger_Click;
+            btnTestLogger.Click += btnTestLogger_Click;
+            // 
+            // btnOffPcTimer
+            // 
+            btnOffPcTimer.Location = new Point(697, 12);
+            btnOffPcTimer.Name = "btnOffPcTimer";
+            btnOffPcTimer.Size = new Size(75, 23);
+            btnOffPcTimer.TabIndex = 5;
+            btnOffPcTimer.Text = "OFF PC";
+            btnOffPcTimer.UseVisualStyleBackColor = true;
+            btnOffPcTimer.Click += btnOffPcTimer_Click;
+            // 
+            // btnCancelOffpc
+            // 
+            btnCancelOffpc.Location = new Point(697, 41);
+            btnCancelOffpc.Name = "btnCancelOffpc";
+            btnCancelOffpc.Size = new Size(75, 23);
+            btnCancelOffpc.TabIndex = 6;
+            btnCancelOffpc.Text = "CANCEL";
+            btnCancelOffpc.UseVisualStyleBackColor = true;
+            btnCancelOffpc.Click += btnCancelOffpc_Click;
             // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(784, 661);
+            Controls.Add(btnCancelOffpc);
+            Controls.Add(btnOffPcTimer);
             Controls.Add(btnTestLogger);
             Controls.Add(btnCopyLog);
             Controls.Add(btnClearLog);
             Controls.Add(btnSaveLog);
             Controls.Add(rtbLogger);
             Name = "MainForm";
-            Text = "Form1";
+            Text = "Admin Helper";
             ResumeLayout(false);
         }
 
@@ -109,5 +133,7 @@ namespace AdminHepler
         private Button btnClearLog;
         private Button btnCopyLog;
         private Button btnTestLogger;
+        private Button btnOffPcTimer;
+        private Button btnCancelOffpc;
     }
 }
