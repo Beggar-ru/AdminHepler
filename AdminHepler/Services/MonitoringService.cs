@@ -1,14 +1,17 @@
-﻿using AdminHepler.Models;
+﻿using AdminHepler.Logger;
+using AdminHepler.Models;
+using AdminHepler.Utils;
+using OpenHardwareMonitor.Hardware;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Management;
 using System.Text;
 using System.Threading.Tasks;
-using AdminHepler.Logger;
-using AdminHepler.Utils;
 using System.Windows.Forms;
+using System.Security.Principal;
 
 namespace AdminHepler.Services
 {
@@ -21,16 +24,18 @@ namespace AdminHepler.Services
         private PerformanceCounter _cpuCounter;
         private PerformanceCounter _ramCounter;
 
+        private Computer _computer;
+        private ISensor _gpuSensor;
+
         private readonly ILogger _logger;
 
         public bool IsMonitoring => _isMonitoring;
 
         public MonitoringService(ILogger logger)
         {
-            InitializeCounters();
-
             _logger = logger;
-            
+            InitializeCounters();
+            InitializeGpuMonitoring();
         }
 
         private void InitializeCounters()
@@ -89,6 +94,151 @@ namespace AdminHepler.Services
             }
         }
 
+        private (double used, double total) GetRamInfo()
+        {
+            var info = new Microsoft.VisualBasic.Devices.ComputerInfo();
+            var total = (double)info.TotalPhysicalMemory / 1024 / 1024 / 1024;
+            var available = (double)info.AvailablePhysicalMemory / 1024 / 1024 / 1024;
+            var used = total - available;
+
+            return (used, total);
+        }
+        private void InitializeGpuMonitoring()
+        {
+            try
+            {
+                _logger.Info("Starting GPU monitoring initialization...");
+
+                _computer = new Computer
+                {
+                    IsGpuEnabled = true,
+                    IsCpuEnabled = false,
+                    IsMemoryEnabled = false,
+                    IsMotherboardEnabled = false,
+                    IsControllerEnabled = false,
+                    IsNetworkEnabled = false,
+                    IsStorageEnabled = false
+                };
+
+                bool hasAdminRights = Utils.IsAdminUtils.IsAdmin();
+                _logger.Info($"Admin rights: {hasAdminRights}. Opening computer in {(hasAdminRights ? "full" : "portable")} mode.");
+
+                _computer.Open(hasAdminRights ? false : true);
+                _logger.Info($"Computer opened. Hardware count: {_computer.Hardware.Count}");
+
+                // Логирование всех найденных устройств
+                foreach (var hardware in _computer.Hardware)
+                {
+                    _logger.Info($"Found hardware: {hardware.Name} (Type: {hardware.HardwareType})");
+
+                    if (hardware.HardwareType == HardwareType.GpuNvidia ||
+                        hardware.HardwareType == HardwareType.GpuAmd ||
+                        hardware.HardwareType == HardwareType.GpuIntel)
+                    {
+                        _logger.Info($"GPU detected: {hardware.Name}");
+                        hardware.Update();
+
+                        _logger.Info($"Sensors count: {hardware.Sensors.Length}");
+
+                        foreach (var sensor in hardware.Sensors)
+                        {
+                            _logger.Info($"  Sensor: '{sensor.Name}' Type: {sensor.SensorType} Value: {sensor.Value}");
+
+                            // Ищем любой сенсор загрузки GPU (не только "GPU Core")
+                            if (sensor.SensorType == SensorType.Load)
+                            {
+                                _logger.Info($"  → Selected as GPU sensor: {sensor.Name}");
+                                _gpuSensor = sensor;
+                                break;
+                            }
+                        }
+
+                        if (_gpuSensor == null)
+                        {
+                            _logger.Warning("GPU found but no Load sensor available. Trying GPU usage sensor...");
+                            // Альтернативный поиск
+                            foreach (var sensor in hardware.Sensors)
+                            {
+                                if (sensor.Name.Contains("GPU") && sensor.SensorType == SensorType.Load)
+                                {
+                                    _gpuSensor = sensor;
+                                    _logger.Info($"  → Selected alternative sensor: {sensor.Name}");
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (_gpuSensor != null) break;
+                    }
+                }
+
+                if (_gpuSensor != null)
+                {
+                    _logger.Success("GPU monitoring initialized successfully!");
+                }
+                else
+                {
+                    _logger.Warning("GPU monitoring: No suitable sensor found. GPU usage will show 0%.");
+                    _logger.Warning("Possible reasons:");
+                    _logger.Warning("  - Integrated GPU (Intel HD/UHD) may not be supported");
+                    _logger.Warning("  - GPU drivers don't expose sensors");
+                    _logger.Warning("  - Need administrator rights");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"GPU monitoring initialization failed: {ex.Message}");
+                _logger.Error($"StackTrace: {ex.StackTrace}");
+            }
+        }
+
+        private double GetGpuUsage()
+        {
+            if (_gpuSensor != null)
+            {
+                try
+                {
+                    _gpuSensor.Hardware.Update();
+                    var value = _gpuSensor.Value;
+
+                    if (value.HasValue)
+                    {
+                        return value.Value;
+                    }
+                    else
+                    {
+                        _logger.Debug("GPU sensor value is null");
+                        return 0;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"Error reading GPU sensor: {ex.Message}");
+                    return 0;
+                }
+            }
+
+            return 0;
+        }
+
+        private (double usage, double free) GetDiskInfo()
+        {
+            try
+            {
+                var drive = new System.IO.DriveInfo("C");
+                var total = drive.TotalSize;
+                var free = drive.TotalFreeSpace;
+                var used = total - free;
+                var usage = (used * 100.0) / total;
+                var freeGb = free / 1024.0 / 1024.0 / 1024.0;
+
+                return (usage, freeGb);
+            }
+            catch
+            {
+                return (0, 0);
+            }
+        }
         private SystemInfo GetSystemInfo()
         {
             var info = new SystemInfo();
@@ -120,63 +270,13 @@ namespace AdminHepler.Services
             return info;
         }
 
-        private (double used, double total) GetRamInfo()
-        {
-            var info = new Microsoft.VisualBasic.Devices.ComputerInfo();
-            var total = (double)info.TotalPhysicalMemory / 1024 / 1024 / 1024;
-            var available = (double)info.AvailablePhysicalMemory / 1024 / 1024 / 1024;
-            var used = total - available;
-
-            return (used, total);
-        }
-
-        private double GetGpuUsage()
-        {
-            try
-            {
-                var searcher = new ManagementObjectSearcher(
-                    "SELECT * FROM Win32_PerfFormattedData_Counters_GPUEngine");
-
-                foreach (ManagementObject obj in searcher.Get())
-                {
-                    var name = obj["Name"]?.ToString() ?? "";
-                    if (name.Contains("engtype_3D"))
-                    {
-                        return Convert.ToDouble(obj["UtilizationPercentage"] ?? 0);
-                    }
-                }
-            }
-            catch { }
-
-            _logger.Warning("GPU usage retrieval not implemented or failed.");
-            return 0;
-        }
-
-        private (double usage, double free) GetDiskInfo()
-        {
-            try
-            {
-                var drive = new System.IO.DriveInfo("C");
-                var total = drive.TotalSize;
-                var free = drive.TotalFreeSpace;
-                var used = total - free;
-                var usage = (used * 100.0) / total;
-                var freeGb = free / 1024.0 / 1024.0 / 1024.0;
-
-                return (usage, freeGb);
-            }
-            catch
-            {
-                return (0, 0);
-            }
-        }
-
         public void Dispose()
         {
             StopMonitoring();
             _cpuCounter?.Dispose();
             _ramCounter?.Dispose();
             _cts?.Dispose();
+            _computer?.Close();
         }
     }
 }

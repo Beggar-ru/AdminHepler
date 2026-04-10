@@ -37,17 +37,20 @@ namespace AdminHepler
             btnOffPcTimer = new Button();
             btnCancelOffpc = new Button();
             groupBox1 = new GroupBox();
-            tbMonitorCPU = new TextBox();
-            tbMonitoringGPU = new TextBox();
-            tbMonitoringRAM = new TextBox();
-            tbMonitoringHDD = new TextBox();
-            label1 = new Label();
-            label2 = new Label();
-            label3 = new Label();
-            label4 = new Label();
-            btnStartMonitoring = new Button();
-            btnStopMonitoring = new Button();
             label5 = new Label();
+            btnStopMonitoring = new Button();
+            btnStartMonitoring = new Button();
+            label4 = new Label();
+            label3 = new Label();
+            label2 = new Label();
+            label1 = new Label();
+            tbMonitoringHDD = new TextBox();
+            tbMonitoringRAM = new TextBox();
+            tbMonitoringGPU = new TextBox();
+            tbMonitorCPU = new TextBox();
+            btnAdminRights = new Button();
+            label6 = new Label();
+            lblRights = new Label();
             groupBox1.SuspendLayout();
             SuspendLayout();
             // 
@@ -135,40 +138,69 @@ namespace AdminHepler
             groupBox1.Controls.Add(tbMonitoringRAM);
             groupBox1.Controls.Add(tbMonitoringGPU);
             groupBox1.Controls.Add(tbMonitorCPU);
-            groupBox1.Location = new Point(12, 12);
+            groupBox1.Location = new Point(12, 264);
             groupBox1.Name = "groupBox1";
-            groupBox1.Size = new Size(195, 186);
+            groupBox1.Size = new Size(220, 208);
             groupBox1.TabIndex = 7;
             groupBox1.TabStop = false;
             groupBox1.Text = "monitoring resources";
             // 
-            // tbMonitorCPU
+            // label5
             // 
-            tbMonitorCPU.Location = new Point(86, 22);
-            tbMonitorCPU.Name = "tbMonitorCPU";
-            tbMonitorCPU.Size = new Size(100, 23);
-            tbMonitorCPU.TabIndex = 0;
+            label5.AutoSize = true;
+            label5.Location = new Point(6, 157);
+            label5.Name = "label5";
+            label5.Size = new Size(143, 15);
+            label5.TabIndex = 11;
+            label5.Text = "Start and stop monitoring";
+            label5.Click += label5_Click;
             // 
-            // tbMonitoringGPU
+            // btnStopMonitoring
             // 
-            tbMonitoringGPU.Location = new Point(86, 51);
-            tbMonitoringGPU.Name = "tbMonitoringGPU";
-            tbMonitoringGPU.Size = new Size(100, 23);
-            tbMonitoringGPU.TabIndex = 1;
+            btnStopMonitoring.Location = new Point(5, 175);
+            btnStopMonitoring.Name = "btnStopMonitoring";
+            btnStopMonitoring.Size = new Size(75, 23);
+            btnStopMonitoring.TabIndex = 10;
+            btnStopMonitoring.Text = "Stop";
+            btnStopMonitoring.UseVisualStyleBackColor = true;
+            btnStopMonitoring.Click += btnStopMonitoring_Click;
             // 
-            // tbMonitoringRAM
+            // btnStartMonitoring
             // 
-            tbMonitoringRAM.Location = new Point(86, 80);
-            tbMonitoringRAM.Name = "tbMonitoringRAM";
-            tbMonitoringRAM.Size = new Size(100, 23);
-            tbMonitoringRAM.TabIndex = 2;
+            btnStartMonitoring.Location = new Point(137, 175);
+            btnStartMonitoring.Name = "btnStartMonitoring";
+            btnStartMonitoring.Size = new Size(75, 23);
+            btnStartMonitoring.TabIndex = 9;
+            btnStartMonitoring.Text = "Start";
+            btnStartMonitoring.UseVisualStyleBackColor = true;
+            btnStartMonitoring.Click += btnStartMonitoring_Click;
             // 
-            // tbMonitoringHDD
+            // label4
             // 
-            tbMonitoringHDD.Location = new Point(86, 109);
-            tbMonitoringHDD.Name = "tbMonitoringHDD";
-            tbMonitoringHDD.Size = new Size(100, 23);
-            tbMonitoringHDD.TabIndex = 3;
+            label4.AutoSize = true;
+            label4.Location = new Point(111, 25);
+            label4.Name = "label4";
+            label4.Size = new Size(74, 15);
+            label4.TabIndex = 8;
+            label4.Text = "Disk storage:";
+            // 
+            // label3
+            // 
+            label3.AutoSize = true;
+            label3.Location = new Point(5, 113);
+            label3.Name = "label3";
+            label3.Size = new Size(39, 15);
+            label3.TabIndex = 7;
+            label3.Text = "RAM: ";
+            // 
+            // label2
+            // 
+            label2.AutoSize = true;
+            label2.Location = new Point(5, 69);
+            label2.Name = "label2";
+            label2.Size = new Size(36, 15);
+            label2.TabIndex = 6;
+            label2.Text = "GPU: ";
             // 
             // label1
             // 
@@ -179,67 +211,71 @@ namespace AdminHepler
             label1.TabIndex = 5;
             label1.Text = "CPU: ";
             // 
-            // label2
+            // tbMonitoringHDD
             // 
-            label2.AutoSize = true;
-            label2.Location = new Point(6, 54);
-            label2.Name = "label2";
-            label2.Size = new Size(36, 15);
-            label2.TabIndex = 6;
-            label2.Text = "GPU: ";
+            tbMonitoringHDD.Location = new Point(112, 43);
+            tbMonitoringHDD.Multiline = true;
+            tbMonitoringHDD.Name = "tbMonitoringHDD";
+            tbMonitoringHDD.Size = new Size(100, 111);
+            tbMonitoringHDD.TabIndex = 3;
             // 
-            // label3
+            // tbMonitoringRAM
             // 
-            label3.AutoSize = true;
-            label3.Location = new Point(6, 83);
-            label3.Name = "label3";
-            label3.Size = new Size(39, 15);
-            label3.TabIndex = 7;
-            label3.Text = "RAM: ";
+            tbMonitoringRAM.Location = new Point(6, 131);
+            tbMonitoringRAM.Name = "tbMonitoringRAM";
+            tbMonitoringRAM.Size = new Size(100, 23);
+            tbMonitoringRAM.TabIndex = 2;
+            tbMonitoringRAM.TextChanged += tbMonitoringRAM_TextChanged;
             // 
-            // label4
+            // tbMonitoringGPU
             // 
-            label4.AutoSize = true;
-            label4.Location = new Point(6, 112);
-            label4.Name = "label4";
-            label4.Size = new Size(74, 15);
-            label4.TabIndex = 8;
-            label4.Text = "Disk storage:";
+            tbMonitoringGPU.Location = new Point(6, 87);
+            tbMonitoringGPU.Name = "tbMonitoringGPU";
+            tbMonitoringGPU.Size = new Size(100, 23);
+            tbMonitoringGPU.TabIndex = 1;
             // 
-            // btnStartMonitoring
+            // tbMonitorCPU
             // 
-            btnStartMonitoring.Location = new Point(111, 157);
-            btnStartMonitoring.Name = "btnStartMonitoring";
-            btnStartMonitoring.Size = new Size(75, 23);
-            btnStartMonitoring.TabIndex = 9;
-            btnStartMonitoring.Text = "Start";
-            btnStartMonitoring.UseVisualStyleBackColor = true;
-            btnStartMonitoring.Click += btnStartMonitoring_Click;
+            tbMonitorCPU.Location = new Point(6, 43);
+            tbMonitorCPU.Name = "tbMonitorCPU";
+            tbMonitorCPU.Size = new Size(100, 23);
+            tbMonitorCPU.TabIndex = 0;
             // 
-            // btnStopMonitoring
+            // btnAdminRights
             // 
-            btnStopMonitoring.Location = new Point(6, 157);
-            btnStopMonitoring.Name = "btnStopMonitoring";
-            btnStopMonitoring.Size = new Size(75, 23);
-            btnStopMonitoring.TabIndex = 10;
-            btnStopMonitoring.Text = "Stop";
-            btnStopMonitoring.UseVisualStyleBackColor = true;
-            btnStopMonitoring.Click += btnStopMonitoring_Click;
+            btnAdminRights.Location = new Point(12, 626);
+            btnAdminRights.Name = "btnAdminRights";
+            btnAdminRights.Size = new Size(75, 23);
+            btnAdminRights.TabIndex = 8;
+            btnAdminRights.Text = "Admin";
+            btnAdminRights.UseVisualStyleBackColor = true;
             // 
-            // label5
+            // label6
             // 
-            label5.AutoSize = true;
-            label5.Location = new Point(7, 139);
-            label5.Name = "label5";
-            label5.Size = new Size(143, 15);
-            label5.TabIndex = 11;
-            label5.Text = "Start and stop monitoring";
+            label6.AutoSize = true;
+            label6.Location = new Point(12, 9);
+            label6.Name = "label6";
+            label6.Size = new Size(46, 15);
+            label6.TabIndex = 9;
+            label6.Text = "Rights: ";
+            // 
+            // lblRights
+            // 
+            lblRights.AutoSize = true;
+            lblRights.Location = new Point(64, 9);
+            lblRights.Name = "lblRights";
+            lblRights.Size = new Size(34, 15);
+            lblRights.TabIndex = 10;
+            lblRights.Text = "none";
             // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(784, 661);
+            Controls.Add(lblRights);
+            Controls.Add(label6);
+            Controls.Add(btnAdminRights);
             Controls.Add(groupBox1);
             Controls.Add(btnCancelOffpc);
             Controls.Add(btnOffPcTimer);
@@ -248,11 +284,14 @@ namespace AdminHepler
             Controls.Add(btnClearLog);
             Controls.Add(btnSaveLog);
             Controls.Add(rtbLogger);
+            FormBorderStyle = FormBorderStyle.FixedSingle;
             Name = "MainForm";
             Text = "Admin Helper";
+            Load += MainForm_Load;
             groupBox1.ResumeLayout(false);
             groupBox1.PerformLayout();
             ResumeLayout(false);
+            PerformLayout();
         }
 
         #endregion
@@ -276,5 +315,8 @@ namespace AdminHepler
         private Button btnStopMonitoring;
         private Button btnStartMonitoring;
         private Label label5;
+        private Button btnAdminRights;
+        private Label label6;
+        private Label lblRights;
     }
 }
