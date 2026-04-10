@@ -1,7 +1,7 @@
 ﻿using AdminHepler.Logger;
 using AdminHepler.Models;
 using AdminHepler.Utils;
-using OpenHardwareMonitor.Hardware;
+using LibreHardwareMonitor.Hardware;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -107,7 +107,7 @@ namespace AdminHepler.Services
         {
             try
             {
-                _logger.Info("Starting GPU monitoring initialization...");
+                _logger.Info("=== Starting GPU monitoring initialization ===");
 
                 _computer = new Computer
                 {
@@ -121,74 +121,107 @@ namespace AdminHepler.Services
                 };
 
                 bool hasAdminRights = Utils.IsAdminUtils.IsAdmin();
-                _logger.Info($"Admin rights: {hasAdminRights}. Opening computer in {(hasAdminRights ? "full" : "portable")} mode.");
+                _logger.Info($"Admin rights: {hasAdminRights}");
 
-                _computer.Open(hasAdminRights ? false : true);
+                _computer.Open();
                 _logger.Info($"Computer opened. Hardware count: {_computer.Hardware.Count}");
 
-                // Логирование всех найденных устройств
+                // Логирование ВСЕХ найденных устройств
+                int gpuIndex = 0;
                 foreach (var hardware in _computer.Hardware)
                 {
-                    _logger.Info($"Found hardware: {hardware.Name} (Type: {hardware.HardwareType})");
+                    _logger.Info($"Hardware [{gpuIndex++}]: {hardware.Name} (Type: {hardware.HardwareType})");
 
+                    // Проверяем ЛЮБОЕ GPU устройство
                     if (hardware.HardwareType == HardwareType.GpuNvidia ||
                         hardware.HardwareType == HardwareType.GpuAmd ||
                         hardware.HardwareType == HardwareType.GpuIntel)
                     {
-                        _logger.Info($"GPU detected: {hardware.Name}");
+                        _logger.Info($"→ GPU detected: {hardware.Name}");
                         hardware.Update();
 
-                        _logger.Info($"Sensors count: {hardware.Sensors.Length}");
+                        _logger.Info($"Sensors available: {hardware.Sensors.Count()}");
 
+                        // Логирование ВСЕХ сенсоров
+                        int sensorIndex = 0;
                         foreach (var sensor in hardware.Sensors)
                         {
-                            _logger.Info($"  Sensor: '{sensor.Name}' Type: {sensor.SensorType} Value: {sensor.Value}");
-
-                            // Ищем любой сенсор загрузки GPU (не только "GPU Core")
-                            if (sensor.SensorType == SensorType.Load)
-                            {
-                                _logger.Info($"  → Selected as GPU sensor: {sensor.Name}");
-                                _gpuSensor = sensor;
-                                break;
-                            }
+                            _logger.Info($"    Sensor [{sensorIndex++}]: '{sensor.Name}' | Type: {sensor.SensorType} | Value: {sensor.Value}");
                         }
 
-                        if (_gpuSensor == null)
+                        // Поиск ЛЮБОГО сенсора загрузки (не только "GPU Core")
+                        foreach (var sensor in hardware.Sensors)
                         {
-                            _logger.Warning("GPU found but no Load sensor available. Trying GPU usage sensor...");
-                            // Альтернативный поиск
-                            foreach (var sensor in hardware.Sensors)
+                            // Ищем сенсоры загрузки GPU
+                            if (sensor.SensorType == SensorType.Load)
                             {
-                                if (sensor.Name.Contains("GPU") && sensor.SensorType == SensorType.Load)
+                                string sensorName = sensor.Name.ToLower();
+
+                                // Проверяем различные варианты имен
+                                if (sensorName.Contains("gpu") ||
+                                    sensorName.Contains("engine") ||
+                                    sensorName.Contains("3d") ||
+                                    sensorName.Contains("core") ||
+                                    sensorName.Contains("usage"))
                                 {
+                                    _logger.Info($"  ✓ Selected GPU sensor: '{sensor.Name}' (Type: {sensor.SensorType})");
                                     _gpuSensor = sensor;
-                                    _logger.Info($"  → Selected alternative sensor: {sensor.Name}");
                                     break;
                                 }
                             }
                         }
 
-                        if (_gpuSensor != null) break;
+                        // Если не нашли через Load, пробуем альтернативы
+                        if (_gpuSensor == null)
+                        {
+                            _logger.Warning("  No Load sensor found. Trying alternative sensors...");
+
+                            foreach (var sensor in hardware.Sensors)
+                            {
+                                // Пробуем любой сенсор с "GPU" в имени
+                                if (sensor.Name.ToLower().Contains("gpu"))
+                                {
+                                    _logger.Info($"  → Using alternative sensor: '{sensor.Name}' (Type: {sensor.SensorType})");
+                                    _gpuSensor = sensor;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (_gpuSensor != null)
+                        {
+                            _logger.Success("✓ GPU monitoring initialized successfully!");
+                            _logger.Info($"  Sensor: {_gpuSensor.Name}");
+                            _logger.Info($"  Type: {_gpuSensor.SensorType}");
+                            break; // Нашли GPU - выходим
+                        }
+                        else
+                        {
+                            _logger.Error("  ✗ GPU found but NO suitable sensor detected!");
+                        }
                     }
                 }
 
-                if (_gpuSensor != null)
+                if (_gpuSensor == null)
                 {
-                    _logger.Success("GPU monitoring initialized successfully!");
-                }
-                else
-                {
-                    _logger.Warning("GPU monitoring: No suitable sensor found. GPU usage will show 0%.");
+                    _logger.Warning("=== GPU MONITORING FAILED ===");
                     _logger.Warning("Possible reasons:");
-                    _logger.Warning("  - Integrated GPU (Intel HD/UHD) may not be supported");
-                    _logger.Warning("  - GPU drivers don't expose sensors");
-                    _logger.Warning("  - Need administrator rights");
+                    _logger.Warning("  1. Integrated GPU (Intel HD/UHD/Iris) - limited support");
+                    _logger.Warning("  2. GPU drivers don't expose sensors via OHM");
+                    _logger.Warning("  3. Need to update OpenHardwareMonitor to latest version");
+                    _logger.Warning("  4. Some GPUs require additional drivers (NVAPI for NVIDIA)");
+                    _logger.Info("GPU usage will display 0%");
                 }
             }
             catch (Exception ex)
             {
-                _logger.Error($"GPU monitoring initialization failed: {ex.Message}");
+                _logger.Error($"GPU monitoring initialization FAILED: {ex.Message}");
                 _logger.Error($"StackTrace: {ex.StackTrace}");
+
+                if (ex.InnerException != null)
+                {
+                    _logger.Error($"Inner exception: {ex.InnerException.Message}");
+                }
             }
         }
 
@@ -203,11 +236,12 @@ namespace AdminHepler.Services
 
                     if (value.HasValue)
                     {
-                        return value.Value;
+                        return Math.Round(value.Value, 1);
                     }
                     else
                     {
-                        _logger.Debug("GPU sensor value is null");
+                        // Сенсор есть, но значение null
+                        _logger.Debug("GPU sensor exists but value is null");
                         return 0;
                     }
                 }
