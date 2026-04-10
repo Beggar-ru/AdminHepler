@@ -192,6 +192,31 @@ namespace AdminHepler
             }
         }
 
+        private void RestartAsAdmin()
+        {
+            try
+            {
+                var exeName = Process.GetCurrentProcess().MainModule.FileName;
+                var startInfo = new ProcessStartInfo(exeName)
+                {
+                    Verb = "runas",
+                    UseShellExecute = true
+                };
+                _logger.Info("Request admin rights...");
+                Process.Start(startInfo);
+                _logger.Success("Admin rights granted, restarting...");
+                Application.Exit();
+            }
+            catch (System.ComponentModel.Win32Exception ex)
+            {
+                _logger.Warning("Admin rights denied by user.");
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Failed to restart as admin: {ex.Message}");
+            }
+        }
+
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             _monitoringService?.StopMonitoring();
@@ -202,7 +227,22 @@ namespace AdminHepler
 
         private void MainForm_Load(object sender, EventArgs e)
         {
-
+            if (Utils.IsAdminUtils.IsAdmin())
+            {
+                btnAdminRights.Enabled = false;
+                _logger.Info("Запущено с правами администратора");
+                lblRights.Text = "Admin";
+                lblRights.ForeColor = Color.Red;
+            }
+            else
+            {
+                btnAdminRights.Enabled = true;
+                _logger.Warning("Запущено без прав администратора. Некоторые функции могут быть недоступны.");
+                lblRights.Text = "User";
+                lblRights.ForeColor = Color.Blue;
+            }
+            _monitoringService = new MonitoringService(_logger);
+            _monitoringService.DataUpdated += OnMonitoringDataUpdated;
         }
 
         private void tbMonitoringRAM_TextChanged(object sender, EventArgs e)
@@ -213,6 +253,11 @@ namespace AdminHepler
         private void label5_Click(object sender, EventArgs e)
         {
 
+        }
+
+        private void btnAdminRights_Click(object sender, EventArgs e)
+        {
+            RestartAsAdmin();
         }
     }
 }
