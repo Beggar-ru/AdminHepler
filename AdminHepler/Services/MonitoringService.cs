@@ -33,10 +33,9 @@ namespace AdminHepler.Services
 
         public MonitoringService(ILogger logger)
         {
+            _logger = logger;
             InitializeCounters();
             InitializeGpuMonitoring();
-            _logger = logger;
-            
         }
 
         private void InitializeCounters()
@@ -106,39 +105,90 @@ namespace AdminHepler.Services
         }
         private void InitializeGpuMonitoring()
         {
-            _computer = new Computer
+            try
             {
-                IsGpuEnabled = true,
-                IsCpuEnabled = false,
-                IsMemoryEnabled = false,
-                IsMotherboardEnabled = false,
-                IsControllerEnabled = false,
-                IsNetworkEnabled = false,
-                IsStorageEnabled = false
-            };
+                _logger.Info("Starting GPU monitoring initialization...");
 
-            bool hasAdminRights = Utils.IsAdminUtils.IsAdmin();
-            _computer.Open(hasAdminRights ? false : true);
-
-            //_computer.Open(false);
-
-            foreach (var hardware in _computer.Hardware)
-            {
-                if (hardware.HardwareType == HardwareType.GpuNvidia ||
-                    hardware.HardwareType == HardwareType.GpuAmd ||
-                    hardware.HardwareType == HardwareType.GpuIntel)
+                _computer = new Computer
                 {
-                    hardware.Update();
-                    foreach (var sensor in hardware.Sensors)
+                    IsGpuEnabled = true,
+                    IsCpuEnabled = false,
+                    IsMemoryEnabled = false,
+                    IsMotherboardEnabled = false,
+                    IsControllerEnabled = false,
+                    IsNetworkEnabled = false,
+                    IsStorageEnabled = false
+                };
+
+                bool hasAdminRights = Utils.IsAdminUtils.IsAdmin();
+                _logger.Info($"Admin rights: {hasAdminRights}. Opening computer in {(hasAdminRights ? "full" : "portable")} mode.");
+
+                _computer.Open(hasAdminRights ? false : true);
+                _logger.Info($"Computer opened. Hardware count: {_computer.Hardware.Count}");
+
+                // Логирование всех найденных устройств
+                foreach (var hardware in _computer.Hardware)
+                {
+                    _logger.Info($"Found hardware: {hardware.Name} (Type: {hardware.HardwareType})");
+
+                    if (hardware.HardwareType == HardwareType.GpuNvidia ||
+                        hardware.HardwareType == HardwareType.GpuAmd ||
+                        hardware.HardwareType == HardwareType.GpuIntel)
                     {
-                        if (sensor.SensorType == SensorType.Load &&
-                            sensor.Name.Contains("GPU Core"))
+                        _logger.Info($"GPU detected: {hardware.Name}");
+                        hardware.Update();
+
+                        _logger.Info($"Sensors count: {hardware.Sensors.Length}");
+
+                        foreach (var sensor in hardware.Sensors)
                         {
-                            _gpuSensor = sensor;
-                            break;
+                            _logger.Info($"  Sensor: '{sensor.Name}' Type: {sensor.SensorType} Value: {sensor.Value}");
+
+                            // Ищем любой сенсор загрузки GPU (не только "GPU Core")
+                            if (sensor.SensorType == SensorType.Load)
+                            {
+                                _logger.Info($"  → Selected as GPU sensor: {sensor.Name}");
+                                _gpuSensor = sensor;
+                                break;
+                            }
                         }
+
+                        if (_gpuSensor == null)
+                        {
+                            _logger.Warning("GPU found but no Load sensor available. Trying GPU usage sensor...");
+                            // Альтернативный поиск
+                            foreach (var sensor in hardware.Sensors)
+                            {
+                                if (sensor.Name.Contains("GPU") && sensor.SensorType == SensorType.Load)
+                                {
+                                    _gpuSensor = sensor;
+                                    _logger.Info($"  → Selected alternative sensor: {sensor.Name}");
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (_gpuSensor != null) break;
                     }
                 }
+
+                if (_gpuSensor != null)
+                {
+                    _logger.Success("GPU monitoring initialized successfully!");
+                }
+                else
+                {
+                    _logger.Warning("GPU monitoring: No suitable sensor found. GPU usage will show 0%.");
+                    _logger.Warning("Possible reasons:");
+                    _logger.Warning("  - Integrated GPU (Intel HD/UHD) may not be supported");
+                    _logger.Warning("  - GPU drivers don't expose sensors");
+                    _logger.Warning("  - Need administrator rights");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"GPU monitoring initialization failed: {ex.Message}");
+                _logger.Error($"StackTrace: {ex.StackTrace}");
             }
         }
 
@@ -146,9 +196,28 @@ namespace AdminHepler.Services
         {
             if (_gpuSensor != null)
             {
-                _gpuSensor.Hardware.Update();
-                return _gpuSensor.Value ?? 0;
+                try
+                {
+                    _gpuSensor.Hardware.Update();
+                    var value = _gpuSensor.Value;
+
+                    if (value.HasValue)
+                    {
+                        return value.Value;
+                    }
+                    else
+                    {
+                        _logger.Debug("GPU sensor value is null");
+                        return 0;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"Error reading GPU sensor: {ex.Message}");
+                    return 0;
+                }
             }
+
             return 0;
         }
 

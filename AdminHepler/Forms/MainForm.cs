@@ -5,6 +5,8 @@ using System.Windows.Forms;
 using AdminHepler.Forms;
 using AdminHepler.Scripts;
 using AdminHepler.Services;
+using System.Diagnostics;
+using System.Security.Principal;
 
 namespace AdminHepler
 {
@@ -27,7 +29,7 @@ namespace AdminHepler
             _logger.Info("Приложение запущено");
             _logger.Info($"Папка для логов: {FileUtils.GetLogsFolderPath()}");
 
-            
+
         }
 
         private void SetupMonitoringTextBoxes()
@@ -196,6 +198,21 @@ namespace AdminHepler
             _monitoringService?.Dispose();
 
             base.OnFormClosing(e);
+        }
+
+        private void MainForm_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        private void tbMonitoringRAM_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label5_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }
