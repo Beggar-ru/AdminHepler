@@ -249,6 +249,7 @@ namespace AdminHepler
             btnAdminRights.TabIndex = 8;
             btnAdminRights.Text = "Admin";
             btnAdminRights.UseVisualStyleBackColor = true;
+            btnAdminRights.Click += btnAdminRights_Click;
             // 
             // label6
             // 
@@ -285,6 +286,7 @@ namespace AdminHepler
             Controls.Add(btnSaveLog);
             Controls.Add(rtbLogger);
             FormBorderStyle = FormBorderStyle.FixedSingle;
+            MaximizeBox = false;
             Name = "MainForm";
             Text = "Admin Helper";
             Load += MainForm_Load;
