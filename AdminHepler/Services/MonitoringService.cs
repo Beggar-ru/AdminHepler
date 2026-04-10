@@ -1,14 +1,17 @@
-﻿using AdminHepler.Models;
+﻿using AdminHepler.Logger;
+using AdminHepler.Models;
+using AdminHepler.Utils;
+using OpenHardwareMonitor.Hardware;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Management;
 using System.Text;
 using System.Threading.Tasks;
-using AdminHepler.Logger;
-using AdminHepler.Utils;
 using System.Windows.Forms;
+using System.Security.Principal;
 
 namespace AdminHepler.Services
 {
@@ -21,6 +24,9 @@ namespace AdminHepler.Services
         private PerformanceCounter _cpuCounter;
         private PerformanceCounter _ramCounter;
 
+        private Computer _computer;
+        private ISensor _gpuSensor;
+
         private readonly ILogger _logger;
 
         public bool IsMonitoring => _isMonitoring;
@@ -28,7 +34,7 @@ namespace AdminHepler.Services
         public MonitoringService(ILogger logger)
         {
             InitializeCounters();
-
+            InitializeGpuMonitoring();
             _logger = logger;
             
         }
@@ -89,6 +95,81 @@ namespace AdminHepler.Services
             }
         }
 
+        private (double used, double total) GetRamInfo()
+        {
+            var info = new Microsoft.VisualBasic.Devices.ComputerInfo();
+            var total = (double)info.TotalPhysicalMemory / 1024 / 1024 / 1024;
+            var available = (double)info.AvailablePhysicalMemory / 1024 / 1024 / 1024;
+            var used = total - available;
+
+            return (used, total);
+        }
+        private void InitializeGpuMonitoring()
+        {
+            _computer = new Computer
+            {
+                IsGpuEnabled = true,
+                IsCpuEnabled = false,
+                IsMemoryEnabled = false,
+                IsMotherboardEnabled = false,
+                IsControllerEnabled = false,
+                IsNetworkEnabled = false,
+                IsStorageEnabled = false
+            };
+
+            bool hasAdminRights = Utils.IsAdminUtils.IsAdmin();
+            _computer.Open(hasAdminRights ? false : true);
+
+            //_computer.Open(false);
+
+            foreach (var hardware in _computer.Hardware)
+            {
+                if (hardware.HardwareType == HardwareType.GpuNvidia ||
+                    hardware.HardwareType == HardwareType.GpuAmd ||
+                    hardware.HardwareType == HardwareType.GpuIntel)
+                {
+                    hardware.Update();
+                    foreach (var sensor in hardware.Sensors)
+                    {
+                        if (sensor.SensorType == SensorType.Load &&
+                            sensor.Name.Contains("GPU Core"))
+                        {
+                            _gpuSensor = sensor;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        private double GetGpuUsage()
+        {
+            if (_gpuSensor != null)
+            {
+                _gpuSensor.Hardware.Update();
+                return _gpuSensor.Value ?? 0;
+            }
+            return 0;
+        }
+
+        private (double usage, double free) GetDiskInfo()
+        {
+            try
+            {
+                var drive = new System.IO.DriveInfo("C");
+                var total = drive.TotalSize;
+                var free = drive.TotalFreeSpace;
+                var used = total - free;
+                var usage = (used * 100.0) / total;
+                var freeGb = free / 1024.0 / 1024.0 / 1024.0;
+
+                return (usage, freeGb);
+            }
+            catch
+            {
+                return (0, 0);
+            }
+        }
         private SystemInfo GetSystemInfo()
         {
             var info = new SystemInfo();
@@ -120,63 +201,13 @@ namespace AdminHepler.Services
             return info;
         }
 
-        private (double used, double total) GetRamInfo()
-        {
-            var info = new Microsoft.VisualBasic.Devices.ComputerInfo();
-            var total = (double)info.TotalPhysicalMemory / 1024 / 1024 / 1024;
-            var available = (double)info.AvailablePhysicalMemory / 1024 / 1024 / 1024;
-            var used = total - available;
-
-            return (used, total);
-        }
-
-        private double GetGpuUsage()
-        {
-            try
-            {
-                var searcher = new ManagementObjectSearcher(
-                    "SELECT * FROM Win32_PerfFormattedData_Counters_GPUEngine");
-
-                foreach (ManagementObject obj in searcher.Get())
-                {
-                    var name = obj["Name"]?.ToString() ?? "";
-                    if (name.Contains("engtype_3D"))
-                    {
-                        return Convert.ToDouble(obj["UtilizationPercentage"] ?? 0);
-                    }
-                }
-            }
-            catch { }
-
-            _logger.Warning("GPU usage retrieval not implemented or failed.");
-            return 0;
-        }
-
-        private (double usage, double free) GetDiskInfo()
-        {
-            try
-            {
-                var drive = new System.IO.DriveInfo("C");
-                var total = drive.TotalSize;
-                var free = drive.TotalFreeSpace;
-                var used = total - free;
-                var usage = (used * 100.0) / total;
-                var freeGb = free / 1024.0 / 1024.0 / 1024.0;
-
-                return (usage, freeGb);
-            }
-            catch
-            {
-                return (0, 0);
-            }
-        }
-
         public void Dispose()
         {
             StopMonitoring();
             _cpuCounter?.Dispose();
             _ramCounter?.Dispose();
             _cts?.Dispose();
+            _computer?.Close();
         }
     }
 }
