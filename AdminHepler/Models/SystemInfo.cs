@@ -8,14 +8,41 @@ namespace AdminHepler.Models
 {
     public class SystemInfo
     {
-        public double CpuUsage { get; set; }
-        public double GpuUsage { get; set; }
-        public double RamUsage { get; set; }
-        public double RamTotal { get; set; }
-        public double DiskUsage { get; set; }
-        public double DiskFree { get; set; }
+        // CPU
+        public double CpuLoad { get; set; }
+        public double CpuTemperature { get; set; }
+        public double CpuFrequency { get; set; } // MHz
+        public double CpuPower { get; set; } // Watts
 
-        public string RamUsageText => $"{RamUsage:F1} / {RamTotal:F1} GB";
-        public string DiskUsageText => $"{DiskUsage:F1}% свободно: {DiskFree:F1} GB";
+        // GPU
+        public double GpuLoad { get; set; }
+        public double GpuTemperature { get; set; }
+        public double GpuMemoryUsed { get; set; } // MB
+        public double GpuMemoryTotal { get; set; } // MB
+        public double GpuFrequency { get; set; } // MHz
+        public double GpuFanSpeed { get; set; } // RPM
+
+        // RAM
+        public double RamUsed { get; set; } // GB
+        public double RamTotal { get; set; } // GB
+        public double RamLoad { get; set; } // %
+
+        // Disk (список дисков)
+        public List<DiskInfo> Disks { get; set; } = new List<DiskInfo>();
+
+        // Время обновления
+        public DateTime LastUpdate { get; set; } = DateTime.Now;
+    }
+
+    public class DiskInfo
+    {
+        public string Name { get; set; }
+        public string Model { get; set; }
+        public double TotalSize { get; set; } // GB
+        public double FreeSpace { get; set; } // GB
+        public double UsedSpace { get; set; } // GB
+        public double UsagePercent { get; set; }
+        public double Temperature { get; set; } // °C
+        public string Type { get; set; } // HDD/SSD/NVMe
     }
 }

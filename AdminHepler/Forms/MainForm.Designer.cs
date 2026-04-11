@@ -135,12 +135,12 @@ namespace AdminHepler
             groupBox1.Controls.Add(label2);
             groupBox1.Controls.Add(label1);
             groupBox1.Controls.Add(tbMonitoringHDD);
-            groupBox1.Controls.Add(tbMonitoringRAM);
             groupBox1.Controls.Add(tbMonitoringGPU);
             groupBox1.Controls.Add(tbMonitorCPU);
-            groupBox1.Location = new Point(12, 264);
+            groupBox1.Controls.Add(tbMonitoringRAM);
+            groupBox1.Location = new Point(12, 41);
             groupBox1.Name = "groupBox1";
-            groupBox1.Size = new Size(220, 208);
+            groupBox1.Size = new Size(331, 381);
             groupBox1.TabIndex = 7;
             groupBox1.TabStop = false;
             groupBox1.Text = "monitoring resources";
@@ -148,7 +148,7 @@ namespace AdminHepler
             // label5
             // 
             label5.AutoSize = true;
-            label5.Location = new Point(6, 157);
+            label5.Location = new Point(100, 356);
             label5.Name = "label5";
             label5.Size = new Size(143, 15);
             label5.TabIndex = 11;
@@ -157,7 +157,7 @@ namespace AdminHepler
             // 
             // btnStopMonitoring
             // 
-            btnStopMonitoring.Location = new Point(5, 175);
+            btnStopMonitoring.Location = new Point(11, 352);
             btnStopMonitoring.Name = "btnStopMonitoring";
             btnStopMonitoring.Size = new Size(75, 23);
             btnStopMonitoring.TabIndex = 10;
@@ -167,7 +167,7 @@ namespace AdminHepler
             // 
             // btnStartMonitoring
             // 
-            btnStartMonitoring.Location = new Point(137, 175);
+            btnStartMonitoring.Location = new Point(249, 352);
             btnStartMonitoring.Name = "btnStartMonitoring";
             btnStartMonitoring.Size = new Size(75, 23);
             btnStartMonitoring.TabIndex = 9;
@@ -178,7 +178,7 @@ namespace AdminHepler
             // label4
             // 
             label4.AutoSize = true;
-            label4.Location = new Point(111, 25);
+            label4.Location = new Point(169, 185);
             label4.Name = "label4";
             label4.Size = new Size(74, 15);
             label4.TabIndex = 8;
@@ -187,7 +187,7 @@ namespace AdminHepler
             // label3
             // 
             label3.AutoSize = true;
-            label3.Location = new Point(5, 113);
+            label3.Location = new Point(168, 25);
             label3.Name = "label3";
             label3.Size = new Size(39, 15);
             label3.TabIndex = 7;
@@ -196,7 +196,7 @@ namespace AdminHepler
             // label2
             // 
             label2.AutoSize = true;
-            label2.Location = new Point(5, 69);
+            label2.Location = new Point(7, 185);
             label2.Name = "label2";
             label2.Size = new Size(36, 15);
             label2.TabIndex = 6;
@@ -205,7 +205,7 @@ namespace AdminHepler
             // label1
             // 
             label1.AutoSize = true;
-            label1.Location = new Point(6, 25);
+            label1.Location = new Point(7, 25);
             label1.Name = "label1";
             label1.Size = new Size(36, 15);
             label1.TabIndex = 5;
@@ -213,32 +213,39 @@ namespace AdminHepler
             // 
             // tbMonitoringHDD
             // 
-            tbMonitoringHDD.Location = new Point(112, 43);
+            tbMonitoringHDD.Location = new Point(169, 203);
             tbMonitoringHDD.Multiline = true;
             tbMonitoringHDD.Name = "tbMonitoringHDD";
-            tbMonitoringHDD.Size = new Size(100, 111);
+            tbMonitoringHDD.ScrollBars = ScrollBars.Vertical;
+            tbMonitoringHDD.Size = new Size(155, 138);
             tbMonitoringHDD.TabIndex = 3;
             // 
             // tbMonitoringRAM
             // 
-            tbMonitoringRAM.Location = new Point(6, 131);
+            tbMonitoringRAM.Location = new Point(169, 43);
+            tbMonitoringRAM.Multiline = true;
             tbMonitoringRAM.Name = "tbMonitoringRAM";
-            tbMonitoringRAM.Size = new Size(100, 23);
+            tbMonitoringRAM.ScrollBars = ScrollBars.Vertical;
+            tbMonitoringRAM.Size = new Size(155, 138);
             tbMonitoringRAM.TabIndex = 2;
             tbMonitoringRAM.TextChanged += tbMonitoringRAM_TextChanged;
             // 
             // tbMonitoringGPU
             // 
-            tbMonitoringGPU.Location = new Point(6, 87);
+            tbMonitoringGPU.Location = new Point(8, 203);
+            tbMonitoringGPU.Multiline = true;
             tbMonitoringGPU.Name = "tbMonitoringGPU";
-            tbMonitoringGPU.Size = new Size(100, 23);
+            tbMonitoringGPU.ScrollBars = ScrollBars.Vertical;
+            tbMonitoringGPU.Size = new Size(155, 138);
             tbMonitoringGPU.TabIndex = 1;
             // 
             // tbMonitorCPU
             // 
-            tbMonitorCPU.Location = new Point(6, 43);
+            tbMonitorCPU.Location = new Point(7, 43);
+            tbMonitorCPU.Multiline = true;
             tbMonitorCPU.Name = "tbMonitorCPU";
-            tbMonitorCPU.Size = new Size(100, 23);
+            tbMonitorCPU.ScrollBars = ScrollBars.Vertical;
+            tbMonitorCPU.Size = new Size(156, 138);
             tbMonitorCPU.TabIndex = 0;
             // 
             // btnAdminRights

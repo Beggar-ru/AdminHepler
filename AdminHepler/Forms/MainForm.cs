@@ -1,12 +1,13 @@
+п»їusing AdminHepler.Forms;
 using AdminHepler.Logger;
-using AdminHepler.Utils;
 using AdminHepler.Models;
-using System.Windows.Forms;
-using AdminHepler.Forms;
 using AdminHepler.Scripts;
 using AdminHepler.Services;
+using AdminHepler.Utils;
 using System.Diagnostics;
 using System.Security.Principal;
+using System.Text;
+using System.Windows.Forms;
 
 namespace AdminHepler
 {
@@ -26,8 +27,8 @@ namespace AdminHepler
             btnStopMonitoring.Enabled = false;
 
 
-            _logger.Info("Приложение запущено");
-            _logger.Info($"Папка для логов: {FileUtils.GetLogsFolderPath()}");
+            _logger.Info("РџСЂРёР»РѕР¶РµРЅРёРµ Р·Р°РїСѓС‰РµРЅРѕ");
+            _logger.Info($"РџР°РїРєР° РґР»СЏ Р»РѕРіРѕРІ: {FileUtils.GetLogsFolderPath()}");
 
 
         }
@@ -54,19 +55,64 @@ namespace AdminHepler
 
         private void UpdateMonitoringDisplay(SystemInfo info)
         {
-            tbMonitorCPU.Text = $"{info.CpuUsage:F1}%";
-            tbMonitoringGPU.Text = $"{info.GpuUsage:F1}%";
-            tbMonitoringRAM.Text = $"{info.RamUsage:F1} / {info.RamTotal:F1} GB";
-            tbMonitoringHDD.Text = $"{info.DiskUsage:F1}% (свободно: {info.DiskFree:F0} GB)";
+            // === CPU ===
+            var cpuText = new StringBuilder();
+            cpuText.AppendLine($"Р—Р°РіСЂСѓР·РєР°: {info.CpuLoad:F1}%");
+            cpuText.AppendLine($"РўРµРјРїРµСЂР°С‚СѓСЂР°: {info.CpuTemperature:F1}В°C");
+            cpuText.AppendLine($"Р§Р°СЃС‚РѕС‚Р°: {info.CpuFrequency:F2} GHz");
+            if (info.CpuPower > 0)
+                cpuText.AppendLine($"РџРѕС‚СЂРµР±Р»РµРЅРёРµ: {info.CpuPower:F1}W");
+            tbMonitorCPU.Text = cpuText.ToString();
+            ColorizeTextBox(tbMonitorCPU, info.CpuLoad);
 
-            // Цветовая индикация нагрузки
-            ColorizeTextBox(tbMonitorCPU, info.CpuUsage);
-            ColorizeTextBox(tbMonitoringGPU, info.GpuUsage);
+            // === GPU ===
+            var gpuText = new StringBuilder();
+            gpuText.AppendLine($"Р—Р°РіСЂСѓР·РєР°: {info.GpuLoad:F1}%");
+            gpuText.AppendLine($"РўРµРјРїРµСЂР°С‚СѓСЂР°: {info.GpuTemperature:F1}В°C");
+            if (info.GpuMemoryTotal > 0)
+                gpuText.AppendLine($"РџР°РјСЏС‚СЊ: {info.GpuMemoryUsed:F0} / {info.GpuMemoryTotal:F0} MB");
+            if (info.GpuFrequency > 0)
+                gpuText.AppendLine($"Р§Р°СЃС‚РѕС‚Р°: {info.GpuFrequency:F0} MHz");
+            if (info.GpuFanSpeed > 0)
+                gpuText.AppendLine($"Р’РµРЅС‚РёР»СЏС‚РѕСЂ: {info.GpuFanSpeed:F0} RPM");
+            tbMonitoringGPU.Text = gpuText.ToString();
+            ColorizeTextBox(tbMonitoringGPU, info.GpuLoad);
 
-            double ramPercent = (info.RamUsage / info.RamTotal) * 100;
-            ColorizeTextBox(tbMonitoringRAM, ramPercent);
+            // === RAM ===
+            var ramText = new StringBuilder();
+            ramText.AppendLine($"РСЃРїРѕР»СЊР·РѕРІР°РЅРѕ: {info.RamUsed:F1} / {info.RamTotal:F1} GB");
+            ramText.AppendLine($"Р—Р°РіСЂСѓР·РєР°: {info.RamLoad:F1}%");
+            tbMonitoringRAM.Text = ramText.ToString();
+            ColorizeTextBox(tbMonitoringRAM, info.RamLoad);
 
-            ColorizeTextBox(tbMonitoringHDD, info.DiskUsage);
+            // === DISKS ===
+            var diskText = new StringBuilder();
+            if (info.Disks.Count > 0)
+            {
+                foreach (var disk in info.Disks)
+                {
+                    diskText.AppendLine($"{disk.Name} ({disk.Model})");
+                    diskText.AppendLine($"РўРёРї: {disk.Type}");
+                    diskText.AppendLine($"Р’СЃРµРіРѕ: {disk.TotalSize:F0} GB");
+                    diskText.AppendLine($"РЎРІРѕР±РѕРґРЅРѕ: {disk.FreeSpace:F0} GB");
+                    diskText.AppendLine($"Р—Р°РіСЂСѓР·РєР°: {disk.UsagePercent:F1}%");
+                    if (disk.Temperature > 0)
+                        diskText.AppendLine($"РўРµРјРїРµСЂР°С‚СѓСЂР°: {disk.Temperature:F1}В°C");
+                    //diskText.AppendLine($"в””в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ");
+                }
+            }
+            else
+            {
+                diskText.AppendLine("Р”РёСЃРєРё РЅРµ РѕР±РЅР°СЂСѓР¶РµРЅС‹");
+            }
+            tbMonitoringHDD.Text = diskText.ToString();
+
+            // Р¦РІРµС‚ РґР»СЏ РґРёСЃРєРѕРІ (РїРѕ РјР°РєСЃРёРјР°Р»СЊРЅРѕР№ Р·Р°РіСЂСѓР·РєРµ)
+            if (info.Disks.Count > 0)
+            {
+                var maxDiskUsage = info.Disks.Max(d => d.UsagePercent);
+                ColorizeTextBox(tbMonitoringHDD, maxDiskUsage);
+            }
         }
 
         private void ColorizeTextBox(TextBox textBox, double percentage)
@@ -92,10 +138,10 @@ namespace AdminHepler
 
         private void btnTestLogger_Click(object sender, EventArgs e)
         {
-            _logger.Info("Это информационное сообщение");
-            _logger.Warning("Это предупреждение");
-            _logger.Error("Это ошибка");
-            _logger.Success("Это успешное действие");
+            _logger.Info("Р­С‚Рѕ РёРЅС„РѕСЂРјР°С†РёРѕРЅРЅРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ");
+            _logger.Warning("Р­С‚Рѕ РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ");
+            _logger.Error("Р­С‚Рѕ РѕС€РёР±РєР°");
+            _logger.Success("Р­С‚Рѕ СѓСЃРїРµС€РЅРѕРµ РґРµР№СЃС‚РІРёРµ");
         }
 
 
@@ -104,14 +150,14 @@ namespace AdminHepler
             if (!string.IsNullOrEmpty(rtbLogger.Text))
             {
                 Clipboard.SetText(rtbLogger.Text);
-                _logger.Info("Лог скопирован в буфер обмена");
+                _logger.Info("Р›РѕРі СЃРєРѕРїРёСЂРѕРІР°РЅ РІ Р±СѓС„РµСЂ РѕР±РјРµРЅР°");
             }
         }
 
         private void btnClearLog_Click(object sender, EventArgs e)
         {
             _logger.Clear();
-            _logger.Info("Логи очищены");
+            _logger.Info("Р›РѕРіРё РѕС‡РёС‰РµРЅС‹");
         }
 
         private void btnSaveLog_Click(object sender, EventArgs e)
@@ -119,11 +165,11 @@ namespace AdminHepler
             try
             {
                 string filePath = _logger.SaveToFile();
-                _logger.Success($"Лог сохранен: {filePath}");
+                _logger.Success($"Р›РѕРі СЃРѕС…СЂР°РЅРµРЅ: {filePath}");
             }
             catch (Exception ex)
             {
-                _logger.Error($"Ошибка при сохранении лога: {ex.Message}");
+                _logger.Error($"РћС€РёР±РєР° РїСЂРё СЃРѕС…СЂР°РЅРµРЅРёРё Р»РѕРіР°: {ex.Message}");
             }
         }
 
@@ -146,15 +192,15 @@ namespace AdminHepler
             try
             {
                 _monitoringService.StopMonitoring();
-                _logger.Info("Мониторинг ресурсов остановлен");
+                _logger.Info("РњРѕРЅРёС‚РѕСЂРёРЅРі СЂРµСЃСѓСЂСЃРѕРІ РѕСЃС‚Р°РЅРѕРІР»РµРЅ");
 
                 btnStartMonitoring.Enabled = true;
                 btnStopMonitoring.Enabled = false;
                 /*
-                lblMonitoringStatus.Text = "Мониторинг остановлен";
+                lblMonitoringStatus.Text = "РњРѕРЅРёС‚РѕСЂРёРЅРі РѕСЃС‚Р°РЅРѕРІР»РµРЅ";
                 lblMonitoringStatus.ForeColor = Color.Gray;
                 */
-                // Очистка полей
+                // РћС‡РёСЃС‚РєР° РїРѕР»РµР№
                 tbMonitorCPU.Text = "0.0%";
                 tbMonitoringGPU.Text = "0.0%";
                 tbMonitoringRAM.Text = "0.0 / 0.0 GB";
@@ -167,7 +213,7 @@ namespace AdminHepler
             }
             catch (Exception ex)
             {
-                _logger.Error($"Ошибка остановки мониторинга: {ex.Message}");
+                _logger.Error($"РћС€РёР±РєР° РѕСЃС‚Р°РЅРѕРІРєРё РјРѕРЅРёС‚РѕСЂРёРЅРіР°: {ex.Message}");
             }
         }
 
@@ -176,19 +222,19 @@ namespace AdminHepler
             try
             {
                 _monitoringService.StartMonitoring();
-                _logger.Success("Мониторинг ресурсов запущен");
+                _logger.Success("РњРѕРЅРёС‚РѕСЂРёРЅРі СЂРµСЃСѓСЂСЃРѕРІ Р·Р°РїСѓС‰РµРЅ");
 
                 btnStartMonitoring.Enabled = false;
                 btnStopMonitoring.Enabled = true;
                 /*
-                // Визуальный индикатор работы
-                lblMonitoringStatus.Text = "Мониторинг активен";
+                // Р’РёР·СѓР°Р»СЊРЅС‹Р№ РёРЅРґРёРєР°С‚РѕСЂ СЂР°Р±РѕС‚С‹
+                lblMonitoringStatus.Text = "РњРѕРЅРёС‚РѕСЂРёРЅРі Р°РєС‚РёРІРµРЅ";
                 lblMonitoringStatus.ForeColor = Color.Green;
                 */
             }
             catch (Exception ex)
             {
-                _logger.Error($"Ошибка запуска мониторинга: {ex.Message}");
+                _logger.Error($"РћС€РёР±РєР° Р·Р°РїСѓСЃРєР° РјРѕРЅРёС‚РѕСЂРёРЅРіР°: {ex.Message}");
             }
         }
 
@@ -230,14 +276,14 @@ namespace AdminHepler
             if (Utils.IsAdminUtils.IsAdmin())
             {
                 btnAdminRights.Enabled = false;
-                _logger.Info("Запущено с правами администратора");
+                _logger.Info("Р—Р°РїСѓС‰РµРЅРѕ СЃ РїСЂР°РІР°РјРё Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂР°");
                 lblRights.Text = "Admin";
                 lblRights.ForeColor = Color.Red;
             }
             else
             {
                 btnAdminRights.Enabled = true;
-                _logger.Warning("Запущено без прав администратора. Некоторые функции могут быть недоступны.");
+                _logger.Warning("Р—Р°РїСѓС‰РµРЅРѕ Р±РµР· РїСЂР°РІ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂР°. РќРµРєРѕС‚РѕСЂС‹Рµ С„СѓРЅРєС†РёРё РјРѕРіСѓС‚ Р±С‹С‚СЊ РЅРµРґРѕСЃС‚СѓРїРЅС‹.");
                 lblRights.Text = "User";
                 lblRights.ForeColor = Color.Blue;
             }

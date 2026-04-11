@@ -5,13 +5,11 @@ using LibreHardwareMonitor.Hardware;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Management;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Forms;
-using System.Security.Principal;
 
 namespace AdminHepler.Services
 {
@@ -22,12 +20,22 @@ namespace AdminHepler.Services
         private CancellationTokenSource _cts;
         private bool _isMonitoring;
         private PerformanceCounter _cpuCounter;
-        private PerformanceCounter _ramCounter;
-
         private Computer _computer;
-        private ISensor _gpuSensor;
-
         private readonly ILogger _logger;
+
+        // Сенсоры CPU
+        private ISensor _cpuLoadSensor;
+        private ISensor _cpuTempSensor;
+        private ISensor _cpuClockSensor;
+        private ISensor _cpuPowerSensor;
+
+        // Сенсоры GPU
+        private ISensor _gpuLoadSensor;
+        private ISensor _gpuTempSensor;
+        private ISensor _gpuMemorySensor;
+        private ISensor _gpuClockSensor;
+        private ISensor _gpuFanSensor;
+        private double _gpuMemoryTotal;
 
         public bool IsMonitoring => _isMonitoring;
 
@@ -35,7 +43,7 @@ namespace AdminHepler.Services
         {
             _logger = logger;
             InitializeCounters();
-            InitializeGpuMonitoring();
+            InitializeHardwareMonitoring();
         }
 
         private void InitializeCounters()
@@ -43,11 +51,159 @@ namespace AdminHepler.Services
             try
             {
                 _cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
-                _ramCounter = new PerformanceCounter("Memory", "% Committed Bytes In Use");
             }
             catch (Exception ex)
             {
-                _logger.Error($"Error initializing counters: {ex.Message}");
+                _logger.Error($"Error initializing CPU counter: {ex.Message}");
+            }
+        }
+
+        private void InitializeHardwareMonitoring()
+        {
+            try
+            {
+                _logger.Info("=== Initializing Hardware Monitoring ===");
+
+                _computer = new Computer
+                {
+                    IsCpuEnabled = true,
+                    IsGpuEnabled = true,
+                    IsMemoryEnabled = true,
+                    IsMotherboardEnabled = true,
+                    IsControllerEnabled = false,
+                    IsNetworkEnabled = false,
+                    IsStorageEnabled = true
+                };
+
+                bool hasAdminRights = Utils.IsAdminUtils.IsAdmin();
+                _logger.Info($"Admin rights: {hasAdminRights}");
+
+                _computer.Open();
+                _logger.Info($"Hardware count: {_computer.Hardware.Count}");
+
+                // Поиск CPU сенсоров
+                FindCpuSensors();
+
+                // Поиск GPU сенсоров
+                FindGpuSensors();
+
+                _logger.Info("=== Hardware Monitoring Initialized ===");
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Hardware monitoring initialization failed: {ex.Message}");
+                _logger.Error($"StackTrace: {ex.StackTrace}");
+            }
+        }
+
+        private void FindCpuSensors()
+        {
+            try
+            {
+                foreach (var hardware in _computer.Hardware)
+                {
+                    if (hardware.HardwareType == HardwareType.Cpu)
+                    {
+                        _logger.Info($"CPU found: {hardware.Name}");
+                        hardware.Update();
+
+                        foreach (var sensor in hardware.Sensors)
+                        {
+                            _logger.Debug($"  CPU Sensor: '{sensor.Name}' | Type: {sensor.SensorType}");
+
+                            switch (sensor.SensorType)
+                            {
+                                case SensorType.Load:
+                                    if (sensor.Name.Contains("Total") || sensor.Name.Contains("CPU"))
+                                        _cpuLoadSensor = sensor;
+                                    break;
+                                case SensorType.Temperature:
+                                    if (sensor.Name.Contains("Core") || sensor.Name.Contains("Package") || sensor.Name.Contains("CPU"))
+                                        _cpuTempSensor = sensor;
+                                    break;
+                                case SensorType.Clock:
+                                    if (sensor.Name.Contains("Core") || sensor.Name.Contains("CPU"))
+                                        _cpuClockSensor = sensor;
+                                    break;
+                                case SensorType.Power:
+                                    _cpuPowerSensor = sensor;
+                                    break;
+                            }
+                        }
+
+                        _logger.Info($"CPU Sensors - Load: {_cpuLoadSensor?.Name}, Temp: {_cpuTempSensor?.Name}");
+                        break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"CPU sensor search failed: {ex.Message}");
+            }
+        }
+
+        private void FindGpuSensors()
+        {
+            try
+            {
+                foreach (var hardware in _computer.Hardware)
+                {
+                    if (hardware.HardwareType == HardwareType.GpuNvidia ||
+                        hardware.HardwareType == HardwareType.GpuAmd ||
+                        hardware.HardwareType == HardwareType.GpuIntel)
+                    {
+                        _logger.Info($"GPU found: {hardware.Name}");
+                        hardware.Update();
+
+                        foreach (var sensor in hardware.Sensors)
+                        {
+                            _logger.Debug($"  GPU Sensor: '{sensor.Name}' | Type: {sensor.SensorType}");
+
+                            switch (sensor.SensorType)
+                            {
+                                case SensorType.Load:
+                                    if (sensor.Name.Contains("GPU") || sensor.Name.Contains("Core") || sensor.Name.Contains("3D"))
+                                        _gpuLoadSensor = sensor;
+                                    if (sensor.Name.Contains("Memory"))
+                                        _gpuMemorySensor = sensor;
+                                    break;
+                                case SensorType.Temperature:
+                                    if (sensor.Name.Contains("GPU") || sensor.Name.Contains("Core"))
+                                        _gpuTempSensor = sensor;
+                                    break;
+                                case SensorType.Clock:
+                                    if (sensor.Name.Contains("Core") || sensor.Name.Contains("GPU"))
+                                        _gpuClockSensor = sensor;
+                                    break;
+                                case SensorType.Fan:
+                                    _gpuFanSensor = sensor;
+                                    break;
+                            }
+                        }
+
+                        // Получаем общий объем памяти GPU
+                        try
+                        {
+                            var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_VideoController");
+                            foreach (var obj in searcher.Get())
+                            {
+                                var adapterRam = obj["AdapterRAM"];
+                                if (adapterRam != null)
+                                {
+                                    _gpuMemoryTotal = Convert.ToUInt64(adapterRam) / 1024 / 1024; // MB
+                                }
+                            }
+                        }
+                        catch { }
+
+                        _logger.Info($"GPU Sensors - Load: {_gpuLoadSensor?.Name}, Temp: {_gpuTempSensor?.Name}");
+                        break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"GPU sensor search failed: {ex.Message}");
             }
         }
 
@@ -57,8 +213,8 @@ namespace AdminHepler.Services
 
             _cts = new CancellationTokenSource();
             _isMonitoring = true;
-
             Task.Run(() => MonitorLoop(_cts.Token));
+            _logger.Info("Monitoring started");
         }
 
         public void StopMonitoring()
@@ -67,7 +223,7 @@ namespace AdminHepler.Services
 
             _cts?.Cancel();
             _isMonitoring = false;
-            _logger.Info("Monitoring stopped.");
+            _logger.Info("Monitoring stopped");
         }
 
         private async Task MonitorLoop(CancellationToken token)
@@ -78,12 +234,10 @@ namespace AdminHepler.Services
                 {
                     var info = GetSystemInfo();
                     DataUpdated?.Invoke(this, info);
-
                     await Task.Delay(1000, token);
                 }
                 catch (OperationCanceledException)
                 {
-                    _logger.Info("Monitoring stopped.");
                     break;
                 }
                 catch (Exception ex)
@@ -94,207 +248,76 @@ namespace AdminHepler.Services
             }
         }
 
-        private (double used, double total) GetRamInfo()
-        {
-            var info = new Microsoft.VisualBasic.Devices.ComputerInfo();
-            var total = (double)info.TotalPhysicalMemory / 1024 / 1024 / 1024;
-            var available = (double)info.AvailablePhysicalMemory / 1024 / 1024 / 1024;
-            var used = total - available;
-
-            return (used, total);
-        }
-        private void InitializeGpuMonitoring()
-        {
-            try
-            {
-                _logger.Info("=== Starting GPU monitoring initialization ===");
-
-                _computer = new Computer
-                {
-                    IsGpuEnabled = true,
-                    IsCpuEnabled = false,
-                    IsMemoryEnabled = false,
-                    IsMotherboardEnabled = false,
-                    IsControllerEnabled = false,
-                    IsNetworkEnabled = false,
-                    IsStorageEnabled = false
-                };
-
-                bool hasAdminRights = Utils.IsAdminUtils.IsAdmin();
-                _logger.Info($"Admin rights: {hasAdminRights}");
-
-                _computer.Open();
-                _logger.Info($"Computer opened. Hardware count: {_computer.Hardware.Count}");
-
-                // Логирование ВСЕХ найденных устройств
-                int gpuIndex = 0;
-                foreach (var hardware in _computer.Hardware)
-                {
-                    _logger.Info($"Hardware [{gpuIndex++}]: {hardware.Name} (Type: {hardware.HardwareType})");
-
-                    // Проверяем ЛЮБОЕ GPU устройство
-                    if (hardware.HardwareType == HardwareType.GpuNvidia ||
-                        hardware.HardwareType == HardwareType.GpuAmd ||
-                        hardware.HardwareType == HardwareType.GpuIntel)
-                    {
-                        _logger.Info($"→ GPU detected: {hardware.Name}");
-                        hardware.Update();
-
-                        _logger.Info($"Sensors available: {hardware.Sensors.Count()}");
-
-                        // Логирование ВСЕХ сенсоров
-                        int sensorIndex = 0;
-                        foreach (var sensor in hardware.Sensors)
-                        {
-                            _logger.Info($"    Sensor [{sensorIndex++}]: '{sensor.Name}' | Type: {sensor.SensorType} | Value: {sensor.Value}");
-                        }
-
-                        // Поиск ЛЮБОГО сенсора загрузки (не только "GPU Core")
-                        foreach (var sensor in hardware.Sensors)
-                        {
-                            // Ищем сенсоры загрузки GPU
-                            if (sensor.SensorType == SensorType.Load)
-                            {
-                                string sensorName = sensor.Name.ToLower();
-
-                                // Проверяем различные варианты имен
-                                if (sensorName.Contains("gpu") ||
-                                    sensorName.Contains("engine") ||
-                                    sensorName.Contains("3d") ||
-                                    sensorName.Contains("core") ||
-                                    sensorName.Contains("usage"))
-                                {
-                                    _logger.Info($"  ✓ Selected GPU sensor: '{sensor.Name}' (Type: {sensor.SensorType})");
-                                    _gpuSensor = sensor;
-                                    break;
-                                }
-                            }
-                        }
-
-                        // Если не нашли через Load, пробуем альтернативы
-                        if (_gpuSensor == null)
-                        {
-                            _logger.Warning("  No Load sensor found. Trying alternative sensors...");
-
-                            foreach (var sensor in hardware.Sensors)
-                            {
-                                // Пробуем любой сенсор с "GPU" в имени
-                                if (sensor.Name.ToLower().Contains("gpu"))
-                                {
-                                    _logger.Info($"  → Using alternative sensor: '{sensor.Name}' (Type: {sensor.SensorType})");
-                                    _gpuSensor = sensor;
-                                    break;
-                                }
-                            }
-                        }
-
-                        if (_gpuSensor != null)
-                        {
-                            _logger.Success("✓ GPU monitoring initialized successfully!");
-                            _logger.Info($"  Sensor: {_gpuSensor.Name}");
-                            _logger.Info($"  Type: {_gpuSensor.SensorType}");
-                            break; // Нашли GPU - выходим
-                        }
-                        else
-                        {
-                            _logger.Error("  ✗ GPU found but NO suitable sensor detected!");
-                        }
-                    }
-                }
-
-                if (_gpuSensor == null)
-                {
-                    _logger.Warning("=== GPU MONITORING FAILED ===");
-                    _logger.Warning("Possible reasons:");
-                    _logger.Warning("  1. Integrated GPU (Intel HD/UHD/Iris) - limited support");
-                    _logger.Warning("  2. GPU drivers don't expose sensors via OHM");
-                    _logger.Warning("  3. Need to update OpenHardwareMonitor to latest version");
-                    _logger.Warning("  4. Some GPUs require additional drivers (NVAPI for NVIDIA)");
-                    _logger.Info("GPU usage will display 0%");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.Error($"GPU monitoring initialization FAILED: {ex.Message}");
-                _logger.Error($"StackTrace: {ex.StackTrace}");
-
-                if (ex.InnerException != null)
-                {
-                    _logger.Error($"Inner exception: {ex.InnerException.Message}");
-                }
-            }
-        }
-
-        private double GetGpuUsage()
-        {
-            if (_gpuSensor != null)
-            {
-                try
-                {
-                    _gpuSensor.Hardware.Update();
-                    var value = _gpuSensor.Value;
-
-                    if (value.HasValue)
-                    {
-                        return Math.Round(value.Value, 1);
-                    }
-                    else
-                    {
-                        // Сенсор есть, но значение null
-                        _logger.Debug("GPU sensor exists but value is null");
-                        return 0;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.Error($"Error reading GPU sensor: {ex.Message}");
-                    return 0;
-                }
-            }
-
-            return 0;
-        }
-
-        private (double usage, double free) GetDiskInfo()
-        {
-            try
-            {
-                var drive = new System.IO.DriveInfo("C");
-                var total = drive.TotalSize;
-                var free = drive.TotalFreeSpace;
-                var used = total - free;
-                var usage = (used * 100.0) / total;
-                var freeGb = free / 1024.0 / 1024.0 / 1024.0;
-
-                return (usage, freeGb);
-            }
-            catch
-            {
-                return (0, 0);
-            }
-        }
         private SystemInfo GetSystemInfo()
         {
             var info = new SystemInfo();
 
             try
             {
-                // CPU
-                if (_cpuCounter != null)
-                    info.CpuUsage = _cpuCounter.NextValue();
+                // === CPU ===
+                if (_cpuLoadSensor != null)
+                {
+                    _cpuLoadSensor.Hardware.Update();
+                    info.CpuLoad = _cpuLoadSensor.Value ?? 0;
+                }
+                else if (_cpuCounter != null)
+                {
+                    info.CpuLoad = _cpuCounter.NextValue();
+                }
 
-                // RAM
+                if (_cpuTempSensor != null)
+                {
+                    info.CpuTemperature = _cpuTempSensor.Value ?? 0;
+                }
+
+                if (_cpuClockSensor != null)
+                {
+                    info.CpuFrequency = (_cpuClockSensor.Value ?? 0) / 1000; // MHz → GHz
+                }
+
+                if (_cpuPowerSensor != null)
+                {
+                    info.CpuPower = _cpuPowerSensor.Value ?? 0;
+                }
+
+                // === GPU ===
+                if (_gpuLoadSensor != null)
+                {
+                    _gpuLoadSensor.Hardware.Update();
+                    info.GpuLoad = _gpuLoadSensor.Value ?? 0;
+                }
+
+                if (_gpuTempSensor != null)
+                {
+                    info.GpuTemperature = _gpuTempSensor.Value ?? 0;
+                }
+
+                if (_gpuMemorySensor != null)
+                {
+                    info.GpuMemoryUsed = _gpuMemorySensor.Value ?? 0;
+                }
+                info.GpuMemoryTotal = _gpuMemoryTotal;
+
+                if (_gpuClockSensor != null)
+                {
+                    info.GpuFrequency = (_gpuClockSensor.Value ?? 0) / 1000; // MHz
+                }
+
+                if (_gpuFanSensor != null)
+                {
+                    info.GpuFanSpeed = _gpuFanSensor.Value ?? 0;
+                }
+
+                // === RAM ===
                 var ramInfo = GetRamInfo();
-                info.RamUsage = ramInfo.used;
+                info.RamUsed = ramInfo.used;
                 info.RamTotal = ramInfo.total;
+                info.RamLoad = (info.RamUsed / info.RamTotal) * 100;
 
-                // GPU
-                info.GpuUsage = GetGpuUsage();
+                // === DISKS ===
+                info.Disks = GetDiskInfo();
 
-                // Disk
-                var diskInfo = GetDiskInfo();
-                info.DiskUsage = diskInfo.usage;
-                info.DiskFree = diskInfo.free;
+                info.LastUpdate = DateTime.Now;
             }
             catch (Exception ex)
             {
@@ -304,11 +327,119 @@ namespace AdminHepler.Services
             return info;
         }
 
+        private (double used, double total) GetRamInfo()
+        {
+            try
+            {
+                var info = new Microsoft.VisualBasic.Devices.ComputerInfo();
+                var total = (double)info.TotalPhysicalMemory / 1024 / 1024 / 1024;
+                var available = (double)info.AvailablePhysicalMemory / 1024 / 1024 / 1024;
+                var used = total - available;
+                return (used, total);
+            }
+            catch
+            {
+                return (0, 0);
+            }
+        }
+
+        private List<DiskInfo> GetDiskInfo()
+        {
+            var disks = new List<DiskInfo>();
+
+            try
+            {
+                // Получаем все логические диски
+                var drives = DriveInfo.GetDrives()
+                    .Where(d => d.DriveType == DriveType.Fixed)
+                    .ToList();
+
+                foreach (var drive in drives)
+                {
+                    var diskInfo = new DiskInfo
+                    {
+                        Name = drive.Name.TrimEnd('\\'),
+                        TotalSize = drive.TotalSize / 1024.0 / 1024.0 / 1024.0,
+                        FreeSpace = drive.TotalFreeSpace / 1024.0 / 1024.0 / 1024.0,
+                    };
+
+                    diskInfo.UsedSpace = diskInfo.TotalSize - diskInfo.FreeSpace;
+                    diskInfo.UsagePercent = (diskInfo.UsedSpace / diskInfo.TotalSize) * 100;
+
+                    // Попытка определить тип диска (SSD/HDD)
+                    diskInfo.Type = GetDiskType(drive.Name.TrimEnd('\\'));
+
+                    // Попытка получить температуру диска
+                    diskInfo.Temperature = GetDiskTemperature(drive.Name.TrimEnd('\\'));
+
+                    disks.Add(diskInfo);
+                }
+
+                // Также пробуем получить данные из LibreHardwareMonitor (для температуры)
+                foreach (var hardware in _computer.Hardware)
+                {
+                    if (hardware.HardwareType == HardwareType.Storage)
+                    {
+                        hardware.Update();
+                        foreach (var sensor in hardware.Sensors)
+                        {
+                            if (sensor.SensorType == SensorType.Temperature)
+                            {
+                                var existingDisk = disks.FirstOrDefault(d =>
+                                    hardware.Name.Contains(d.Name) || d.Name.Contains(hardware.Name.Substring(0, 2)));
+
+                                if (existingDisk != null)
+                                {
+                                    existingDisk.Temperature = sensor.Value ?? 0;
+                                    existingDisk.Model = hardware.Name;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Disk info error: {ex.Message}");
+            }
+
+            return disks;
+        }
+
+        private string GetDiskType(string driveLetter)
+        {
+            try
+            {
+                var searcher = new ManagementObjectSearcher(
+                    $"SELECT * FROM Win32_DiskDrive WHERE DeviceID='\\\\.\\PHYSICALDRIVE{driveLetter[0]}'");
+
+                foreach (var obj in searcher.Get())
+                {
+                    var model = obj["Model"]?.ToString() ?? "";
+                    if (model.Contains("SSD") || model.Contains("NVMe") || model.Contains("Solid State"))
+                        return "SSD";
+                    if (model.Contains("NVMe"))
+                        return "NVMe";
+                    return "HDD";
+                }
+            }
+            catch { }
+
+            return "Unknown";
+        }
+
+        private double GetDiskTemperature(string driveLetter)
+        {
+            // Температура диска доступна только через SMART
+            // LibreHardwareMonitor может предоставить эти данные
+            // Возвращаем 0 если недоступно
+            return 0;
+        }
+
         public void Dispose()
         {
             StopMonitoring();
             _cpuCounter?.Dispose();
-            _ramCounter?.Dispose();
             _cts?.Dispose();
             _computer?.Close();
         }
