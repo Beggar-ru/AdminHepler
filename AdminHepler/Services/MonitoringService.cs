@@ -26,8 +26,8 @@ namespace AdminHepler.Services
         // Сенсоры CPU
         private ISensor _cpuLoadSensor;
         private ISensor _cpuTempSensor;
-        private ISensor _cpuClockSensor;
         private ISensor _cpuPowerSensor;
+        private List<ISensor> _cpuClockSensors = new List<ISensor>();
 
         // Сенсоры GPU
         private ISensor _gpuLoadSensor;
@@ -36,6 +36,9 @@ namespace AdminHepler.Services
         private ISensor _gpuClockSensor;
         private ISensor _gpuFanSensor;
         private double _gpuMemoryTotal;
+
+        // Сенсоры дисков
+        private Dictionary<string, ISensor> _diskTempSensors = new Dictionary<string, ISensor>();
 
         public bool IsMonitoring => _isMonitoring;
 
@@ -78,21 +81,23 @@ namespace AdminHepler.Services
                 bool hasAdminRights = Utils.IsAdminUtils.IsAdmin();
                 _logger.Info($"Admin rights: {hasAdminRights}");
 
+                if (!hasAdminRights)
+                {
+                    _logger.Warning("Running without admin rights - some sensors may return 0 (especially AMD CPU temperature)");
+                }
+
                 _computer.Open();
                 _logger.Info($"Hardware count: {_computer.Hardware.Count}");
 
-                // Поиск CPU сенсоров
                 FindCpuSensors();
-
-                // Поиск GPU сенсоров
                 FindGpuSensors();
+                FindDiskSensors();
 
                 _logger.Info("=== Hardware Monitoring Initialized ===");
             }
             catch (Exception ex)
             {
                 _logger.Error($"Hardware monitoring initialization failed: {ex.Message}");
-                _logger.Error($"StackTrace: {ex.StackTrace}");
             }
         }
 
@@ -109,21 +114,38 @@ namespace AdminHepler.Services
 
                         foreach (var sensor in hardware.Sensors)
                         {
-                            _logger.Debug($"  CPU Sensor: '{sensor.Name}' | Type: {sensor.SensorType}");
+                            _logger.Debug($"  CPU Sensor: '{sensor.Name}' | Type: {sensor.SensorType} | Value: {sensor.Value}");
 
                             switch (sensor.SensorType)
                             {
                                 case SensorType.Load:
-                                    if (sensor.Name.Contains("Total") || sensor.Name.Contains("CPU"))
+                                    // Приоритет: CPU Total > CPU > Package
+                                    if (sensor.Name.Contains("Total"))
+                                        _cpuLoadSensor = sensor;
+                                    else if (sensor.Name.Contains("CPU") && _cpuLoadSensor == null)
                                         _cpuLoadSensor = sensor;
                                     break;
                                 case SensorType.Temperature:
-                                    if (sensor.Name.Contains("Core") || sensor.Name.Contains("Package") || sensor.Name.Contains("CPU"))
+                                    // Для AMD Ryzen: Tctl/Tdie - основной сенсор температуры
+                                    // Для Intel: Package или Core
+                                    if (sensor.Name.Contains("Tctl") || sensor.Name.Contains("Tdie"))
+                                    {
+                                        _cpuTempSensor = sensor;
+                                        _logger.Info($"✓ Selected AMD temperature sensor: {sensor.Name}");
+                                    }
+                                    else if (sensor.Name.Contains("Package") && _cpuTempSensor == null)
+                                        _cpuTempSensor = sensor;
+                                    else if (sensor.Name.Contains("Core") && _cpuTempSensor == null)
                                         _cpuTempSensor = sensor;
                                     break;
                                 case SensorType.Clock:
+                                    // Собираем все сенсоры частоты ядер
                                     if (sensor.Name.Contains("Core") || sensor.Name.Contains("CPU"))
-                                        _cpuClockSensor = sensor;
+                                    {
+                                        // Проверяем что значение не null и > 0
+                                        if (sensor.Value.HasValue && sensor.Value.Value > 0)
+                                            _cpuClockSensors.Add(sensor);
+                                    }
                                     break;
                                 case SensorType.Power:
                                     _cpuPowerSensor = sensor;
@@ -131,7 +153,19 @@ namespace AdminHepler.Services
                             }
                         }
 
-                        _logger.Info($"CPU Sensors - Load: {_cpuLoadSensor?.Name}, Temp: {_cpuTempSensor?.Name}");
+                        if (_cpuLoadSensor == null)
+                        {
+                            _logger.Warning("CPU Load sensor not found, using PerformanceCounter");
+                        }
+
+                        if (_cpuClockSensors.Count == 0)
+                        {
+                            _logger.Warning("No valid CPU Clock sensors found, will use WMI fallback (base frequency only)");
+                        }
+
+                        _logger.Info($"CPU Sensors - Load: {_cpuLoadSensor?.Name ?? "PerformanceCounter"}, " +
+                            $"Temp: {_cpuTempSensor?.Name ?? "N/A"}, " +
+                            $"Clock sensors (valid): {_cpuClockSensors.Count}");
                         break;
                     }
                 }
@@ -155,55 +189,188 @@ namespace AdminHepler.Services
                         _logger.Info($"GPU found: {hardware.Name}");
                         hardware.Update();
 
+                        double lhmMemoryTotal = 0;
+
                         foreach (var sensor in hardware.Sensors)
                         {
-                            _logger.Debug($"  GPU Sensor: '{sensor.Name}' | Type: {sensor.SensorType}");
+                            _logger.Debug($"  GPU Sensor: '{sensor.Name}' | Type: {sensor.SensorType} | Value: {sensor.Value}");
 
                             switch (sensor.SensorType)
                             {
                                 case SensorType.Load:
-                                    if (sensor.Name.Contains("GPU") || sensor.Name.Contains("Core") || sensor.Name.Contains("3D"))
+                                    // Загрузка GPU Core (не Memory!)
+                                    if (sensor.Name.Contains("GPU") && sensor.Name.Contains("Core"))
                                         _gpuLoadSensor = sensor;
-                                    if (sensor.Name.Contains("Memory"))
+                                    else if (sensor.Name.Contains("3D") && _gpuLoadSensor == null)
+                                        _gpuLoadSensor = sensor;
+                                    // Память GPU через Load%
+                                    if (sensor.Name.Contains("Memory") && sensor.Name.Contains("Load"))
                                         _gpuMemorySensor = sensor;
                                     break;
                                 case SensorType.Temperature:
-                                    if (sensor.Name.Contains("GPU") || sensor.Name.Contains("Core"))
+                                    // Приоритет: GPU Core > GPU > Hot Spot > Memory Junction
+                                    if (sensor.Name.Contains("GPU") && sensor.Name.Contains("Core"))
+                                        _gpuTempSensor = sensor;
+                                    else if (sensor.Name.Contains("GPU") && _gpuTempSensor == null)
                                         _gpuTempSensor = sensor;
                                     break;
                                 case SensorType.Clock:
-                                    if (sensor.Name.Contains("Core") || sensor.Name.Contains("GPU"))
+                                    // Только GPU Core Clock (не Memory Clock!)
+                                    if (sensor.Name.Contains("GPU") && sensor.Name.Contains("Core"))
+                                        _gpuClockSensor = sensor;
+                                    else if (sensor.Name.Contains("Core") &&
+                                             !sensor.Name.Contains("Memory") &&
+                                             !sensor.Name.Contains("Shader") &&
+                                             _gpuClockSensor == null)
                                         _gpuClockSensor = sensor;
                                     break;
                                 case SensorType.Fan:
                                     _gpuFanSensor = sensor;
                                     break;
+                                case SensorType.SmallData:
+                                    // Память GPU используемая (в MB)
+                                    if (sensor.Name.Contains("Memory") && sensor.Name.Contains("Used"))
+                                        _gpuMemorySensor = sensor;
+                                    // Память GPU общая
+                                    if (sensor.Name.Contains("Memory") && sensor.Name.Contains("Total"))
+                                    {
+                                        lhmMemoryTotal = sensor.Value ?? 0;
+                                        _logger.Info($"✓ GPU Memory Total (LHM): {lhmMemoryTotal} MB");
+                                    }
+                                    break;
                             }
                         }
 
-                        // Получаем общий объем памяти GPU
-                        try
+                        // Приоритет: LHM > Registry > WMI
+                        if (lhmMemoryTotal > 0)
                         {
-                            var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_VideoController");
-                            foreach (var obj in searcher.Get())
+                            _gpuMemoryTotal = lhmMemoryTotal;
+                        }
+                        else
+                        {
+                            bool gotFromRegistry = TryGetGpuMemoryFromRegistry(out double registryMemory);
+                            if (gotFromRegistry && registryMemory > 0)
                             {
-                                var adapterRam = obj["AdapterRAM"];
-                                if (adapterRam != null)
+                                _gpuMemoryTotal = registryMemory;
+                                _logger.Info($"✓ GPU Memory Total (Registry): {_gpuMemoryTotal} MB");
+                            }
+                            else
+                            {
+                                try
                                 {
-                                    _gpuMemoryTotal = Convert.ToUInt64(adapterRam) / 1024 / 1024; // MB
+                                    var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_VideoController");
+                                    foreach (var obj in searcher.Get())
+                                    {
+                                        var adapterRam = obj["AdapterRAM"];
+                                        if (adapterRam != null)
+                                        {
+                                            try
+                                            {
+                                                _gpuMemoryTotal = Convert.ToUInt64(adapterRam) / 1024.0 / 1024.0;
+                                            }
+                                            catch
+                                            {
+                                                _gpuMemoryTotal = Convert.ToUInt32(adapterRam) / 1024.0 / 1024.0;
+                                            }
+                                            _logger.Warning($"⚠ GPU Memory Total (WMI fallback): {_gpuMemoryTotal} MB");
+                                        }
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.Warning($"✗ Could not get GPU memory from WMI: {ex.Message}");
                                 }
                             }
                         }
-                        catch { }
 
-                        _logger.Info($"GPU Sensors - Load: {_gpuLoadSensor?.Name}, Temp: {_gpuTempSensor?.Name}");
+                        _logger.Info($"GPU Sensors - Load: {_gpuLoadSensor?.Name ?? "N/A"}, " +
+                            $"Temp: {_gpuTempSensor?.Name ?? "N/A"}, " +
+                            $"Memory Total: {_gpuMemoryTotal} MB, " +
+                            $"Clock: {_gpuClockSensor?.Name ?? "N/A"}");
                         break;
                     }
+                }
+
+                if (_gpuLoadSensor == null)
+                {
+                    _logger.Warning("GPU Load sensor not found - integrated GPU may not support monitoring");
                 }
             }
             catch (Exception ex)
             {
                 _logger.Error($"GPU sensor search failed: {ex.Message}");
+            }
+        }
+
+        private bool TryGetGpuMemoryFromRegistry(out double memoryMb)
+        {
+            memoryMb = 0;
+            try
+            {
+                using (var baseKey = Microsoft.Win32.Registry.LocalMachine
+                    .OpenSubKey(@"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}"))
+                {
+                    if (baseKey == null) return false;
+
+                    foreach (var subKeyName in baseKey.GetSubKeyNames())
+                    {
+                        if (subKeyName == "Properties") continue;
+
+                        using (var subKey = baseKey.OpenSubKey(subKeyName))
+                        {
+                            var qwMemorySize = subKey?.GetValue("HardwareInformation.qwMemorySize");
+                            if (qwMemorySize != null)
+                            {
+                                ulong bytes = Convert.ToUInt64(qwMemorySize);
+                                if (bytes > 0)
+                                {
+                                    memoryMb = bytes / 1024.0 / 1024.0;
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Debug($"Registry GPU memory read failed: {ex.Message}");
+            }
+            return false;
+        }
+
+        private void FindDiskSensors()
+        {
+            try
+            {
+                foreach (var hardware in _computer.Hardware)
+                {
+                    if (hardware.HardwareType == HardwareType.Storage)
+                    {
+                        _logger.Info($"Storage found: {hardware.Name}");
+                        hardware.Update();
+
+                        foreach (var sensor in hardware.Sensors)
+                        {
+                            if (sensor.SensorType == SensorType.Temperature)
+                            {
+                                var diskName = hardware.Name;
+                                _logger.Debug($"  Disk Sensor: '{sensor.Name}' | Value: {sensor.Value}");
+
+                                if (!_diskTempSensors.ContainsKey(diskName))
+                                {
+                                    _diskTempSensors[diskName] = sensor;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                _logger.Info($"Disk temperature sensors found: {_diskTempSensors.Count}");
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Disk sensor search failed: {ex.Message}");
             }
         }
 
@@ -267,16 +434,60 @@ namespace AdminHepler.Services
 
                 if (_cpuTempSensor != null)
                 {
-                    info.CpuTemperature = _cpuTempSensor.Value ?? 0;
+                    _cpuTempSensor.Hardware.Update();
+                    var tempValue = _cpuTempSensor.Value;
+
+                    // Для AMD Ryzen без прав админа температура может быть 0
+                    if (tempValue.HasValue && tempValue.Value > 0)
+                    {
+                        info.CpuTemperature = tempValue.Value;
+                    }
+                    else if (!Utils.IsAdminUtils.IsAdmin())
+                    {
+                        // Логгируем только один раз (визуально в UI будет 0)
+                        _logger.Debug("CPU temperature = 0 (AMD Ryzen requires admin rights for accurate reading)");
+                    }
                 }
 
-                if (_cpuClockSensor != null)
+                // CPU частота: LHM сенсоры ИЛИ WMI fallback
+                if (_cpuClockSensors.Count > 0)
                 {
-                    info.CpuFrequency = (_cpuClockSensor.Value ?? 0) / 1000; // MHz → GHz
+                    foreach (var sensor in _cpuClockSensors)
+                    {
+                        sensor.Hardware.Update();
+                    }
+
+                    double avgMhz = _cpuClockSensors.Average(s => s.Value ?? 0);
+                    if (avgMhz > 0)
+                    {
+                        info.CpuFrequency = avgMhz / 1000.0;
+                    }
+                }
+
+                // Если LHM не дал частоту - используем WMI
+                if (info.CpuFrequency == 0)
+                {
+                    try
+                    {
+                        var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_Processor");
+                        foreach (var obj in searcher.Get())
+                        {
+                            var currentClockSpeed = obj["CurrentClockSpeed"];
+                            if (currentClockSpeed != null)
+                            {
+                                info.CpuFrequency = Convert.ToDouble(currentClockSpeed) / 1000.0;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Debug($"WMI CPU frequency failed: {ex.Message}");
+                    }
                 }
 
                 if (_cpuPowerSensor != null)
                 {
+                    _cpuPowerSensor.Hardware.Update();
                     info.CpuPower = _cpuPowerSensor.Value ?? 0;
                 }
 
@@ -289,22 +500,38 @@ namespace AdminHepler.Services
 
                 if (_gpuTempSensor != null)
                 {
+                    _gpuTempSensor.Hardware.Update();
                     info.GpuTemperature = _gpuTempSensor.Value ?? 0;
                 }
 
                 if (_gpuMemorySensor != null)
                 {
-                    info.GpuMemoryUsed = _gpuMemorySensor.Value ?? 0;
+                    _gpuMemorySensor.Hardware.Update();
+                    var memValue = _gpuMemorySensor.Value ?? 0;
+
+                    // Если сенсор возвращает проценты (Load)
+                    if (_gpuMemorySensor.SensorType == SensorType.Load)
+                    {
+                        info.GpuMemoryUsed = (_gpuMemoryTotal * memValue) / 100.0;
+                    }
+                    else
+                    {
+                        // Сенсор возвращает MB (SmallData)
+                        info.GpuMemoryUsed = memValue;
+                    }
                 }
+
                 info.GpuMemoryTotal = _gpuMemoryTotal;
 
                 if (_gpuClockSensor != null)
                 {
-                    info.GpuFrequency = (_gpuClockSensor.Value ?? 0) / 1000; // MHz
+                    _gpuClockSensor.Hardware.Update();
+                    info.GpuFrequency = _gpuClockSensor.Value ?? 0;
                 }
 
                 if (_gpuFanSensor != null)
                 {
+                    _gpuFanSensor.Hardware.Update();
                     info.GpuFanSpeed = _gpuFanSensor.Value ?? 0;
                 }
 
@@ -349,52 +576,43 @@ namespace AdminHepler.Services
 
             try
             {
-                // Получаем все логические диски
+                // Получаем ВСЕ диски (не только Fixed)
                 var drives = DriveInfo.GetDrives()
-                    .Where(d => d.DriveType == DriveType.Fixed)
+                    .Where(d => d.DriveType == DriveType.Fixed || d.DriveType == DriveType.Network)
                     .ToList();
+
+                _logger.Debug($"Found {drives.Count} drives to monitor");
 
                 foreach (var drive in drives)
                 {
-                    var diskInfo = new DiskInfo
+                    try
                     {
-                        Name = drive.Name.TrimEnd('\\'),
-                        TotalSize = drive.TotalSize / 1024.0 / 1024.0 / 1024.0,
-                        FreeSpace = drive.TotalFreeSpace / 1024.0 / 1024.0 / 1024.0,
-                    };
-
-                    diskInfo.UsedSpace = diskInfo.TotalSize - diskInfo.FreeSpace;
-                    diskInfo.UsagePercent = (diskInfo.UsedSpace / diskInfo.TotalSize) * 100;
-
-                    // Попытка определить тип диска (SSD/HDD)
-                    diskInfo.Type = GetDiskType(drive.Name.TrimEnd('\\'));
-
-                    // Попытка получить температуру диска
-                    diskInfo.Temperature = GetDiskTemperature(drive.Name.TrimEnd('\\'));
-
-                    disks.Add(diskInfo);
-                }
-
-                // Также пробуем получить данные из LibreHardwareMonitor (для температуры)
-                foreach (var hardware in _computer.Hardware)
-                {
-                    if (hardware.HardwareType == HardwareType.Storage)
-                    {
-                        hardware.Update();
-                        foreach (var sensor in hardware.Sensors)
+                        if (!drive.IsReady)
                         {
-                            if (sensor.SensorType == SensorType.Temperature)
-                            {
-                                var existingDisk = disks.FirstOrDefault(d =>
-                                    hardware.Name.Contains(d.Name) || d.Name.Contains(hardware.Name.Substring(0, 2)));
-
-                                if (existingDisk != null)
-                                {
-                                    existingDisk.Temperature = sensor.Value ?? 0;
-                                    existingDisk.Model = hardware.Name;
-                                }
-                            }
+                            _logger.Debug($"Drive {drive.Name} not ready, skipping");
+                            continue;
                         }
+
+                        var diskInfo = new DiskInfo
+                        {
+                            Name = drive.Name.TrimEnd('\\'),
+                            TotalSize = drive.TotalSize / 1024.0 / 1024.0 / 1024.0,
+                            FreeSpace = drive.TotalFreeSpace / 1024.0 / 1024.0 / 1024.0,
+                        };
+
+                        diskInfo.UsedSpace = diskInfo.TotalSize - diskInfo.FreeSpace;
+                        diskInfo.UsagePercent = (diskInfo.UsedSpace / diskInfo.TotalSize) * 100;
+                        diskInfo.Type = GetDiskType(drive.Name.TrimEnd('\\'));
+                        diskInfo.Temperature = GetDiskTemperature(drive.Name.TrimEnd('\\'));
+                        diskInfo.Model = GetDiskModel(drive.Name.TrimEnd('\\'));
+
+                        _logger.Debug($"Disk {diskInfo.Name}: Type={diskInfo.Type}, Model={diskInfo.Model}");
+
+                        disks.Add(diskInfo);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Debug($"Error reading drive {drive.Name}: {ex.Message}");
                     }
                 }
             }
@@ -410,17 +628,64 @@ namespace AdminHepler.Services
         {
             try
             {
+                char letter = driveLetter[0];
+                int driveIndex = letter - 'A';
+
                 var searcher = new ManagementObjectSearcher(
-                    $"SELECT * FROM Win32_DiskDrive WHERE DeviceID='\\\\.\\PHYSICALDRIVE{driveLetter[0]}'");
+                    $"SELECT * FROM Win32_DiskDrive WHERE Index={driveIndex}");
 
                 foreach (var obj in searcher.Get())
                 {
                     var model = obj["Model"]?.ToString() ?? "";
-                    if (model.Contains("SSD") || model.Contains("NVMe") || model.Contains("Solid State"))
-                        return "SSD";
-                    if (model.Contains("NVMe"))
+                    var mediaType = obj["MediaType"]?.ToString() ?? "";
+
+                    _logger.Debug($"Disk {driveLetter}: Model={model}, MediaType={mediaType}");
+
+                    // Проверяем модель на SSD/NVMe маркеры
+                    if (model.Contains("NVMe") || model.Contains("M.2") || model.Contains("PCIe"))
                         return "NVMe";
-                    return "HDD";
+                    if (model.Contains("SSD") || model.Contains("Solid State") || model.Contains("SATADOM"))
+                        return "SSD";
+                    if (model.Contains("HDD") || model.Contains("Hard Disk"))
+                        return "HDD";
+
+                    // Проверяем MediaType
+                    if (mediaType.Contains("SSD") || mediaType.Contains("Solid State"))
+                        return "SSD";
+                    if (mediaType.Contains("NVMe"))
+                        return "NVMe";
+
+                    // Для Microsoft Storage Space Device пробуем альтернативный метод
+                    if (model.Contains("Storage Space"))
+                    {
+                        // Пул хранилищ может содержать SSD или HDD - определяем по первому физическому диску
+                        return "Unknown"; // Оставляем Unknown для пулов
+                    }
+
+                    return "HDD"; // По умолчанию
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Debug($"GetDiskType error for {driveLetter}: {ex.Message}");
+            }
+
+            return "Unknown";
+        }
+
+        private string GetDiskModel(string driveLetter)
+        {
+            try
+            {
+                char letter = driveLetter[0];
+                int driveIndex = letter - 'A';
+
+                var searcher = new ManagementObjectSearcher(
+                    $"SELECT * FROM Win32_DiskDrive WHERE Index={driveIndex}");
+
+                foreach (var obj in searcher.Get())
+                {
+                    return obj["Model"]?.ToString() ?? "Unknown";
                 }
             }
             catch { }
@@ -430,9 +695,39 @@ namespace AdminHepler.Services
 
         private double GetDiskTemperature(string driveLetter)
         {
-            // Температура диска доступна только через SMART
-            // LibreHardwareMonitor может предоставить эти данные
-            // Возвращаем 0 если недоступно
+            try
+            {
+                // Ищем в сенсорах LHM
+                foreach (var kvp in _diskTempSensors)
+                {
+                    if (kvp.Key.Contains(driveLetter) || driveLetter.Contains(kvp.Key.Substring(0, 2)))
+                    {
+                        kvp.Value.Hardware.Update();
+                        return kvp.Value.Value ?? 0;
+                    }
+                }
+
+                // Альтернативный поиск по всем дискам
+                foreach (var hardware in _computer.Hardware)
+                {
+                    if (hardware.HardwareType == HardwareType.Storage)
+                    {
+                        hardware.Update();
+                        foreach (var sensor in hardware.Sensors)
+                        {
+                            if (sensor.SensorType == SensorType.Temperature)
+                            {
+                                return sensor.Value ?? 0;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Debug($"GetDiskTemperature error: {ex.Message}");
+            }
+
             return 0;
         }
 

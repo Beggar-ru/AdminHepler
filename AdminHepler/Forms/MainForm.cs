@@ -98,7 +98,6 @@ namespace AdminHepler
                     diskText.AppendLine($"Загрузка: {disk.UsagePercent:F1}%");
                     if (disk.Temperature > 0)
                         diskText.AppendLine($"Температура: {disk.Temperature:F1}°C");
-                    //diskText.AppendLine($"└─────────────────────────");
                 }
             }
             else
@@ -107,7 +106,6 @@ namespace AdminHepler
             }
             tbMonitoringHDD.Text = diskText.ToString();
 
-            // Цвет для дисков (по максимальной загрузке)
             if (info.Disks.Count > 0)
             {
                 var maxDiskUsage = info.Disks.Max(d => d.UsagePercent);
@@ -196,11 +194,7 @@ namespace AdminHepler
 
                 btnStartMonitoring.Enabled = true;
                 btnStopMonitoring.Enabled = false;
-                /*
-                lblMonitoringStatus.Text = "Мониторинг остановлен";
-                lblMonitoringStatus.ForeColor = Color.Gray;
-                */
-                // Очистка полей
+                
                 tbMonitorCPU.Text = "0.0%";
                 tbMonitoringGPU.Text = "0.0%";
                 tbMonitoringRAM.Text = "0.0 / 0.0 GB";
@@ -226,11 +220,7 @@ namespace AdminHepler
 
                 btnStartMonitoring.Enabled = false;
                 btnStopMonitoring.Enabled = true;
-                /*
-                // Визуальный индикатор работы
-                lblMonitoringStatus.Text = "Мониторинг активен";
-                lblMonitoringStatus.ForeColor = Color.Green;
-                */
+                
             }
             catch (Exception ex)
             {
