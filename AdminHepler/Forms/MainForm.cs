@@ -194,7 +194,7 @@ namespace AdminHepler
 
                 btnStartMonitoring.Enabled = true;
                 btnStopMonitoring.Enabled = false;
-                
+
                 tbMonitorCPU.Text = "0.0%";
                 tbMonitoringGPU.Text = "0.0%";
                 tbMonitoringRAM.Text = "0.0 / 0.0 GB";
@@ -220,7 +220,7 @@ namespace AdminHepler
 
                 btnStartMonitoring.Enabled = false;
                 btnStopMonitoring.Enabled = true;
-                
+
             }
             catch (Exception ex)
             {
@@ -294,6 +294,16 @@ namespace AdminHepler
         private void btnAdminRights_Click(object sender, EventArgs e)
         {
             RestartAsAdmin();
+        }
+
+        private void tabPage1_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void tabPage2_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }

@@ -45,13 +45,18 @@ namespace AdminHepler
             label2 = new Label();
             label1 = new Label();
             tbMonitoringHDD = new TextBox();
-            tbMonitoringRAM = new TextBox();
             tbMonitoringGPU = new TextBox();
             tbMonitorCPU = new TextBox();
+            tbMonitoringRAM = new TextBox();
             btnAdminRights = new Button();
             label6 = new Label();
             lblRights = new Label();
+            tabControl = new TabControl();
+            tabPageInfoProccess = new TabPage();
+            tabPageInfoService = new TabPage();
+            tabPageScript = new TabPage();
             groupBox1.SuspendLayout();
+            tabControl.SuspendLayout();
             SuspendLayout();
             // 
             // rtbLogger
@@ -97,7 +102,7 @@ namespace AdminHepler
             // 
             // btnTestLogger
             // 
-            btnTestLogger.Location = new Point(580, 12);
+            btnTestLogger.Location = new Point(12, 449);
             btnTestLogger.Name = "btnTestLogger";
             btnTestLogger.Size = new Size(75, 23);
             btnTestLogger.TabIndex = 4;
@@ -107,7 +112,7 @@ namespace AdminHepler
             // 
             // btnOffPcTimer
             // 
-            btnOffPcTimer.Location = new Point(697, 12);
+            btnOffPcTimer.Location = new Point(616, 12);
             btnOffPcTimer.Name = "btnOffPcTimer";
             btnOffPcTimer.Size = new Size(75, 23);
             btnOffPcTimer.TabIndex = 5;
@@ -117,7 +122,7 @@ namespace AdminHepler
             // 
             // btnCancelOffpc
             // 
-            btnCancelOffpc.Location = new Point(697, 41);
+            btnCancelOffpc.Location = new Point(697, 12);
             btnCancelOffpc.Name = "btnCancelOffpc";
             btnCancelOffpc.Size = new Size(75, 23);
             btnCancelOffpc.TabIndex = 6;
@@ -220,16 +225,6 @@ namespace AdminHepler
             tbMonitoringHDD.Size = new Size(155, 138);
             tbMonitoringHDD.TabIndex = 3;
             // 
-            // tbMonitoringRAM
-            // 
-            tbMonitoringRAM.Location = new Point(169, 43);
-            tbMonitoringRAM.Multiline = true;
-            tbMonitoringRAM.Name = "tbMonitoringRAM";
-            tbMonitoringRAM.ScrollBars = ScrollBars.Vertical;
-            tbMonitoringRAM.Size = new Size(155, 138);
-            tbMonitoringRAM.TabIndex = 2;
-            tbMonitoringRAM.TextChanged += tbMonitoringRAM_TextChanged;
-            // 
             // tbMonitoringGPU
             // 
             tbMonitoringGPU.Location = new Point(8, 203);
@@ -247,6 +242,16 @@ namespace AdminHepler
             tbMonitorCPU.ScrollBars = ScrollBars.Vertical;
             tbMonitorCPU.Size = new Size(156, 138);
             tbMonitorCPU.TabIndex = 0;
+            // 
+            // tbMonitoringRAM
+            // 
+            tbMonitoringRAM.Location = new Point(169, 43);
+            tbMonitoringRAM.Multiline = true;
+            tbMonitoringRAM.Name = "tbMonitoringRAM";
+            tbMonitoringRAM.ScrollBars = ScrollBars.Vertical;
+            tbMonitoringRAM.Size = new Size(155, 138);
+            tbMonitoringRAM.TabIndex = 2;
+            tbMonitoringRAM.TextChanged += tbMonitoringRAM_TextChanged;
             // 
             // btnAdminRights
             // 
@@ -276,11 +281,55 @@ namespace AdminHepler
             lblRights.TabIndex = 10;
             lblRights.Text = "none";
             // 
+            // tabControl
+            // 
+            tabControl.Controls.Add(tabPageInfoProccess);
+            tabControl.Controls.Add(tabPageInfoService);
+            tabControl.Controls.Add(tabPageScript);
+            tabControl.Location = new Point(349, 41);
+            tabControl.Name = "tabControl";
+            tabControl.SelectedIndex = 0;
+            tabControl.Size = new Size(423, 381);
+            tabControl.TabIndex = 11;
+            // 
+            // tabPageInfoProccess
+            // 
+            tabPageInfoProccess.Location = new Point(4, 24);
+            tabPageInfoProccess.Name = "tabPageInfoProccess";
+            tabPageInfoProccess.Padding = new Padding(3);
+            tabPageInfoProccess.Size = new Size(415, 353);
+            tabPageInfoProccess.TabIndex = 0;
+            tabPageInfoProccess.Text = "Process";
+            tabPageInfoProccess.UseVisualStyleBackColor = true;
+            tabPageInfoProccess.Click += tabPage1_Click;
+            // 
+            // tabPageInfoService
+            // 
+            tabPageInfoService.Location = new Point(4, 24);
+            tabPageInfoService.Name = "tabPageInfoService";
+            tabPageInfoService.Padding = new Padding(3);
+            tabPageInfoService.Size = new Size(415, 353);
+            tabPageInfoService.TabIndex = 1;
+            tabPageInfoService.Text = "Service";
+            tabPageInfoService.UseVisualStyleBackColor = true;
+            tabPageInfoService.Click += tabPage2_Click;
+            // 
+            // tabPageScript
+            // 
+            tabPageScript.Location = new Point(4, 24);
+            tabPageScript.Name = "tabPageScript";
+            tabPageScript.Padding = new Padding(3);
+            tabPageScript.Size = new Size(415, 353);
+            tabPageScript.TabIndex = 2;
+            tabPageScript.Text = "Scripts";
+            tabPageScript.UseVisualStyleBackColor = true;
+            // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(784, 661);
+            Controls.Add(tabControl);
             Controls.Add(lblRights);
             Controls.Add(label6);
             Controls.Add(btnAdminRights);
@@ -299,6 +348,7 @@ namespace AdminHepler
             Load += MainForm_Load;
             groupBox1.ResumeLayout(false);
             groupBox1.PerformLayout();
+            tabControl.ResumeLayout(false);
             ResumeLayout(false);
             PerformLayout();
         }
@@ -327,5 +377,9 @@ namespace AdminHepler
         private Button btnAdminRights;
         private Label label6;
         private Label lblRights;
+        private TabControl tabControl;
+        private TabPage tabPageInfoProccess;
+        private TabPage tabPageInfoService;
+        private TabPage tabPageScript;
     }
 }
