@@ -8,6 +8,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>AnyCPU;x64</Platforms>
+    <AssemblyName>AdminHelper</AssemblyName>
+    <RootNamespace>AdminHelper</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
