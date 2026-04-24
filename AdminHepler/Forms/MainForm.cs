@@ -8,6 +8,9 @@ using System.Diagnostics;
 using System.Security.Principal;
 using System.Text;
 using System.Windows.Forms;
+using System.Diagnostics;
+using System.ServiceProcess;
+using System.Management;
 
 namespace AdminHepler
 {
@@ -15,23 +18,140 @@ namespace AdminHepler
     {
         private readonly ILogger _logger;
         private IMonitoringService _monitoringService;
+        private System.Windows.Forms.Timer _updateTimer;
 
         public MainForm()
         {
             InitializeComponent();
-
+            StartMonitoring();
             _logger = new LoggerService(rtbLogger);
             _monitoringService = new MonitoringService(_logger);
             _monitoringService.DataUpdated += OnMonitoringDataUpdated;
             SetupMonitoringTextBoxes();
             btnStopMonitoring.Enabled = false;
 
-
             _logger.Info("Приложение запущено");
             _logger.Info($"Папка для логов: {FileUtils.GetLogsFolderPath()}");
-
-
         }
+        
+        private void StartMonitoring()
+        {
+            /*
+            _updateTimer = new System.Windows.Forms.Timer();
+            _updateTimer.Interval = 2000; // 2 секунды
+            _updateTimer.Tick += UpdateTimer_Tick;
+            _updateTimer.Start();
+            */
+
+            // Первоначальная загрузка
+            UpdateProcesses();
+            UpdateServices();
+            LoadScripts();
+        }
+        
+        private void UpdateTimer_Tick(object sender, EventArgs e)
+        {
+            UpdateProcesses();
+            UpdateServices();
+        }
+
+        private void UpdateProcesses()
+        {
+            dataGridViewProcesses.Rows.Clear();
+
+            try
+            {
+                var processes = Process.GetProcesses();
+                foreach (var proc in processes)
+                {
+                    try
+                    {
+                        string description = "";
+                        try
+                        {
+                            description = proc.MainModule?.FileVersionInfo?.FileDescription ?? "";
+                        }
+                        catch { }
+
+                        dataGridViewProcesses.Rows.Add(
+                            proc.ProcessName,
+                            (proc.WorkingSet64 / 1024 / 1024).ToString(), // MB
+                            description,
+                            proc.Responding ? "Работает" : "Нет ответа",
+                            "Process"
+                        );
+                    }
+                    catch { }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogMessage($"Ошибка обновления процессов: {ex.Message}");
+            }
+        }
+
+        private void UpdateServices()
+        {
+            dataGridViewServices.Rows.Clear();
+
+            try
+            {
+                var services = ServiceController.GetServices();
+                foreach (var service in services)
+                {
+                    string startType = GetServiceStartType(service.ServiceName);
+
+                    dataGridViewServices.Rows.Add(
+                        service.ServiceName,
+                        "N/A", // Память для служб сложнее получить
+                        service.DisplayName,
+                        service.Status.ToString(),
+                        startType
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                LogMessage($"Ошибка обновления служб: {ex.Message}");
+            }
+        }
+
+        private string GetServiceStartType(string serviceName)
+        {
+            try
+            {
+                using (var managementObject = new ManagementObject($"Win32_Service.Name='{serviceName}'"))
+                {
+                    return managementObject["StartMode"]?.ToString() ?? "Unknown";
+                }
+            }
+            catch
+            {
+                return "Unknown";
+            }
+        }
+
+        private void LoadScripts()
+        {
+            dataGridViewScripts.Rows.Clear();
+
+            // Пример встроенных скриптов
+            dataGridViewScripts.Rows.Add("CleanTemp", "0", "Очистка временных файлов", "Включен", "PowerShell");
+            dataGridViewScripts.Rows.Add("RestartService", "0", "Перезапуск службы", "Включен", "Встроенный");
+            dataGridViewScripts.Rows.Add("Backup", "0", "Резервное копирование", "Выключен", "bat");
+        }
+
+        private void LogMessage(string message)
+        {
+            if (rtbLogger.InvokeRequired)
+            {
+                rtbLogger.Invoke(new Action(() => LogMessage(message)));
+                return;
+            }
+
+            rtbLogger.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}{Environment.NewLine}");
+        }
+
 
         private void SetupMonitoringTextBoxes()
         {
@@ -279,6 +399,13 @@ namespace AdminHepler
             }
             _monitoringService = new MonitoringService(_logger);
             _monitoringService.DataUpdated += OnMonitoringDataUpdated;
+
+            bool isAdmin = new System.Security.Principal.WindowsPrincipal(
+                System.Security.Principal.WindowsIdentity.GetCurrent())
+                .IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+
+            lblRights.Text = isAdmin ? "Administrator" : "User";
+            lblRights.ForeColor = isAdmin ? Color.Green : Color.Red;
         }
 
         private void tbMonitoringRAM_TextChanged(object sender, EventArgs e)

@@ -1,5 +1,4 @@
-﻿
-namespace AdminHepler
+﻿namespace AdminHepler
 {
     partial class MainForm
     {
@@ -22,7 +21,6 @@ namespace AdminHepler
         }
 
         #region Windows Form Designer generated code
-
         /// <summary>
         ///  Required method for Designer support - do not modify
         ///  the contents of this method with the code editor.
@@ -55,8 +53,36 @@ namespace AdminHepler
             tabPageInfoProccess = new TabPage();
             tabPageInfoService = new TabPage();
             tabPageScript = new TabPage();
+
+            // DataGridView для процессов
+            dataGridViewProcesses = new DataGridView();
+            colProcessName = new DataGridViewTextBoxColumn();
+            colProcessMemory = new DataGridViewTextBoxColumn();
+            colProcessDescription = new DataGridViewTextBoxColumn();
+            colProcessStatus = new DataGridViewTextBoxColumn();
+            colProcessType = new DataGridViewTextBoxColumn();
+
+            // DataGridView для служб
+            dataGridViewServices = new DataGridView();
+            colServiceName = new DataGridViewTextBoxColumn();
+            colServiceMemory = new DataGridViewTextBoxColumn();
+            colServiceDescription = new DataGridViewTextBoxColumn();
+            colServiceStatus = new DataGridViewTextBoxColumn();
+            colServiceType = new DataGridViewTextBoxColumn();
+
+            // DataGridView для скриптов
+            dataGridViewScripts = new DataGridView();
+            colScriptName = new DataGridViewTextBoxColumn();
+            colScriptMemory = new DataGridViewTextBoxColumn();
+            colScriptDescription = new DataGridViewTextBoxColumn();
+            colScriptStatus = new DataGridViewTextBoxColumn();
+            colScriptType = new DataGridViewTextBoxColumn();
+
             groupBox1.SuspendLayout();
             tabControl.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)dataGridViewProcesses).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)dataGridViewServices).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)dataGridViewScripts).BeginInit();
             SuspendLayout();
             // 
             // rtbLogger
@@ -294,6 +320,7 @@ namespace AdminHepler
             // 
             // tabPageInfoProccess
             // 
+            tabPageInfoProccess.Controls.Add(dataGridViewProcesses);
             tabPageInfoProccess.Location = new Point(4, 24);
             tabPageInfoProccess.Name = "tabPageInfoProccess";
             tabPageInfoProccess.Padding = new Padding(3);
@@ -305,6 +332,7 @@ namespace AdminHepler
             // 
             // tabPageInfoService
             // 
+            tabPageInfoService.Controls.Add(dataGridViewServices);
             tabPageInfoService.Location = new Point(4, 24);
             tabPageInfoService.Name = "tabPageInfoService";
             tabPageInfoService.Padding = new Padding(3);
@@ -316,6 +344,7 @@ namespace AdminHepler
             // 
             // tabPageScript
             // 
+            tabPageScript.Controls.Add(dataGridViewScripts);
             tabPageScript.Location = new Point(4, 24);
             tabPageScript.Name = "tabPageScript";
             tabPageScript.Padding = new Padding(3);
@@ -323,6 +352,141 @@ namespace AdminHepler
             tabPageScript.TabIndex = 2;
             tabPageScript.Text = "Scripts";
             tabPageScript.UseVisualStyleBackColor = true;
+            // 
+            // dataGridViewProcesses
+            // 
+            dataGridViewProcesses.AllowUserToAddRows = false;
+            dataGridViewProcesses.AllowUserToDeleteRows = false;
+            dataGridViewProcesses.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            dataGridViewProcesses.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            dataGridViewProcesses.Columns.AddRange(new DataGridViewColumn[] {
+            colProcessName,
+            colProcessMemory,
+            colProcessDescription,
+            colProcessStatus,
+            colProcessType});
+            dataGridViewProcesses.Dock = DockStyle.Fill;
+            dataGridViewProcesses.Location = new Point(3, 3);
+            dataGridViewProcesses.Name = "dataGridViewProcesses";
+            dataGridViewProcesses.ReadOnly = true;
+            dataGridViewProcesses.RowHeadersVisible = false;
+            dataGridViewProcesses.Size = new Size(409, 347);
+            dataGridViewProcesses.TabIndex = 0;
+            // 
+            // colProcessName
+            // 
+            colProcessName.HeaderText = "Имя";
+            colProcessName.Name = "colProcessName";
+            // 
+            // colProcessMemory
+            // 
+            colProcessMemory.HeaderText = "Память (МБ)";
+            colProcessMemory.Name = "colProcessMemory";
+            // 
+            // colProcessDescription
+            // 
+            colProcessDescription.HeaderText = "Описание";
+            colProcessDescription.Name = "colProcessDescription";
+            // 
+            // colProcessStatus
+            // 
+            colProcessStatus.HeaderText = "Статус";
+            colProcessStatus.Name = "colProcessStatus";
+            // 
+            // colProcessType
+            // 
+            colProcessType.HeaderText = "Тип";
+            colProcessType.Name = "colProcessType";
+            // 
+            // dataGridViewServices
+            // 
+            dataGridViewServices.AllowUserToAddRows = false;
+            dataGridViewServices.AllowUserToDeleteRows = false;
+            dataGridViewServices.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            dataGridViewServices.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            dataGridViewServices.Columns.AddRange(new DataGridViewColumn[] {
+            colServiceName,
+            colServiceMemory,
+            colServiceDescription,
+            colServiceStatus,
+            colServiceType});
+            dataGridViewServices.Dock = DockStyle.Fill;
+            dataGridViewServices.Location = new Point(3, 3);
+            dataGridViewServices.Name = "dataGridViewServices";
+            dataGridViewServices.ReadOnly = true;
+            dataGridViewServices.RowHeadersVisible = false;
+            dataGridViewServices.Size = new Size(409, 347);
+            dataGridViewServices.TabIndex = 0;
+            // 
+            // colServiceName
+            // 
+            colServiceName.HeaderText = "Имя";
+            colServiceName.Name = "colServiceName";
+            // 
+            // colServiceMemory
+            // 
+            colServiceMemory.HeaderText = "Память (МБ)";
+            colServiceMemory.Name = "colServiceMemory";
+            // 
+            // colServiceDescription
+            // 
+            colServiceDescription.HeaderText = "Описание";
+            colServiceDescription.Name = "colServiceDescription";
+            // 
+            // colServiceStatus
+            // 
+            colServiceStatus.HeaderText = "Статус";
+            colServiceStatus.Name = "colServiceStatus";
+            // 
+            // colServiceType
+            // 
+            colServiceType.HeaderText = "Тип";
+            colServiceType.Name = "colServiceType";
+            // 
+            // dataGridViewScripts
+            // 
+            dataGridViewScripts.AllowUserToAddRows = false;
+            dataGridViewScripts.AllowUserToDeleteRows = false;
+            dataGridViewScripts.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            dataGridViewScripts.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            dataGridViewScripts.Columns.AddRange(new DataGridViewColumn[] {
+            colScriptName,
+            colScriptMemory,
+            colScriptDescription,
+            colScriptStatus,
+            colScriptType});
+            dataGridViewScripts.Dock = DockStyle.Fill;
+            dataGridViewScripts.Location = new Point(3, 3);
+            dataGridViewScripts.Name = "dataGridViewScripts";
+            dataGridViewScripts.ReadOnly = true;
+            dataGridViewScripts.RowHeadersVisible = false;
+            dataGridViewScripts.Size = new Size(409, 347);
+            dataGridViewScripts.TabIndex = 0;
+            // 
+            // colScriptName
+            // 
+            colScriptName.HeaderText = "Имя";
+            colScriptName.Name = "colScriptName";
+            // 
+            // colScriptMemory
+            // 
+            colScriptMemory.HeaderText = "Память (МБ)";
+            colScriptMemory.Name = "colScriptMemory";
+            // 
+            // colScriptDescription
+            // 
+            colScriptDescription.HeaderText = "Описание";
+            colScriptDescription.Name = "colScriptDescription";
+            // 
+            // colScriptStatus
+            // 
+            colScriptStatus.HeaderText = "Статус";
+            colScriptStatus.Name = "colScriptStatus";
+            // 
+            // colScriptType
+            // 
+            colScriptType.HeaderText = "Тип";
+            colScriptType.Name = "colScriptType";
             // 
             // MainForm
             // 
@@ -349,12 +513,15 @@ namespace AdminHepler
             groupBox1.ResumeLayout(false);
             groupBox1.PerformLayout();
             tabControl.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)dataGridViewProcesses).EndInit();
+            ((System.ComponentModel.ISupportInitialize)dataGridViewServices).EndInit();
+            ((System.ComponentModel.ISupportInitialize)dataGridViewScripts).EndInit();
             ResumeLayout(false);
             PerformLayout();
         }
-
         #endregion
 
+        // Существующие элементы
         private RichTextBox rtbLogger;
         private Button btnSaveLog;
         private Button btnClearLog;
@@ -377,9 +544,35 @@ namespace AdminHepler
         private Button btnAdminRights;
         private Label label6;
         private Label lblRights;
+
+        // Вкладки
         private TabControl tabControl;
         private TabPage tabPageInfoProccess;
         private TabPage tabPageInfoService;
         private TabPage tabPageScript;
+
+        // DataGridView для процессов
+        private DataGridView dataGridViewProcesses;
+        private DataGridViewTextBoxColumn colProcessName;
+        private DataGridViewTextBoxColumn colProcessMemory;
+        private DataGridViewTextBoxColumn colProcessDescription;
+        private DataGridViewTextBoxColumn colProcessStatus;
+        private DataGridViewTextBoxColumn colProcessType;
+
+        // DataGridView для служб
+        private DataGridView dataGridViewServices;
+        private DataGridViewTextBoxColumn colServiceName;
+        private DataGridViewTextBoxColumn colServiceMemory;
+        private DataGridViewTextBoxColumn colServiceDescription;
+        private DataGridViewTextBoxColumn colServiceStatus;
+        private DataGridViewTextBoxColumn colServiceType;
+
+        // DataGridView для скриптов
+        private DataGridView dataGridViewScripts;
+        private DataGridViewTextBoxColumn colScriptName;
+        private DataGridViewTextBoxColumn colScriptMemory;
+        private DataGridViewTextBoxColumn colScriptDescription;
+        private DataGridViewTextBoxColumn colScriptStatus;
+        private DataGridViewTextBoxColumn colScriptType;
     }
 }
