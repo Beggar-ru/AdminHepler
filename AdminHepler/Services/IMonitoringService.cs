@@ -1,11 +1,11 @@
-﻿using AdminHepler.Models;
+﻿using AdminHelper.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AdminHepler.Services
+namespace AdminHelper.Services
 {
     public interface IMonitoringService : IDisposable
     {

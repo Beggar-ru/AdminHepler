@@ -1,5 +1,5 @@
-﻿using AdminHepler.Models;
-using AdminHepler.Utils;
+﻿using AdminHelper.Models;
+using AdminHelper.Utils;
 using System.Windows.Forms;
 using System;
 using System.Collections.Generic;
@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AdminHepler.Logger
+namespace AdminHelper.Logger
 {
     public class LoggerService : ILogger
     {
@@ -30,7 +30,6 @@ namespace AdminHepler.Logger
                 _logEntries.Add(entry);
             }
 
-            // Обновляем UI
             if (_richTextBox.InvokeRequired)
             {
                 _richTextBox.Invoke(new Action(() => AppendToUI(entry)));
@@ -48,12 +47,10 @@ namespace AdminHepler.Logger
             int start = _richTextBox.TextLength;
             _richTextBox.AppendText(text);
 
-            // Цвета для разных уровней
             _richTextBox.Select(start, text.Length);
             _richTextBox.SelectionColor = GetColorByLevel(entry.Level);
             _richTextBox.SelectionLength = 0;
 
-            // Автопрокрутка
             _richTextBox.ScrollToCaret();
         }
 
@@ -65,7 +62,7 @@ namespace AdminHepler.Logger
                 LogLevel.Warning => Color.Orange,
                 LogLevel.Success => Color.DarkGreen,
                 LogLevel.Debug => Color.Gray,
-                _ => Color.Black
+                _ => Color.White
             };
         }
 
@@ -100,9 +97,6 @@ namespace AdminHepler.Logger
             }
         }
 
-        /// <summary>
-        /// Сохраняет лог в файл и возвращает путь
-        /// </summary>
         public string SaveToFile(string fileName = null)
         {
             string logsContent = GetAllLogs();
