@@ -1,16 +1,9 @@
-﻿namespace AdminHepler
+﻿namespace AdminHelper
 {
     partial class MainForm
     {
-        /// <summary>
-        ///  Required designer variable.
-        /// </summary>
         private System.ComponentModel.IContainer components = null;
 
-        /// <summary>
-        ///  Clean up any resources being used.
-        /// </summary>
-        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
             if (disposing && (components != null))
@@ -21,84 +14,79 @@
         }
 
         #region Windows Form Designer generated code
-        /// <summary>
-        ///  Required method for Designer support - do not modify
-        ///  the contents of this method with the code editor.
-        /// </summary>
         private void InitializeComponent()
         {
             rtbLogger = new RichTextBox();
             btnSaveLog = new Button();
             btnClearLog = new Button();
             btnCopyLog = new Button();
-            btnTestLogger = new Button();
             btnOffPcTimer = new Button();
             btnCancelOffpc = new Button();
-            groupBox1 = new GroupBox();
-            label5 = new Label();
-            btnStopMonitoring = new Button();
-            btnStartMonitoring = new Button();
-            label4 = new Label();
-            label3 = new Label();
-            label2 = new Label();
-            label1 = new Label();
-            tbMonitoringHDD = new TextBox();
-            tbMonitoringGPU = new TextBox();
-            tbMonitorCPU = new TextBox();
-            tbMonitoringRAM = new TextBox();
             btnAdminRights = new Button();
             label6 = new Label();
             lblRights = new Label();
             tabControl = new TabControl();
+            tabPageMonitoring = new TabPage();
+            gbCPU = new GroupBox();
+            tbMonitorCPU = new TextBox();
+            gbRAM = new GroupBox();
+            tbMonitoringRAM = new TextBox();
+            gbGPU = new GroupBox();
+            tbMonitoringGPU = new TextBox();
+            gbDisk = new GroupBox();
+            tbMonitoringHDD = new TextBox();
+            btnStopMonitoring = new Button();
+            btnStartMonitoring = new Button();
             tabPageInfoProccess = new TabPage();
-            tabPageInfoService = new TabPage();
-            tabPageScript = new TabPage();
-
-            // DataGridView для процессов
             dataGridViewProcesses = new DataGridView();
             colProcessName = new DataGridViewTextBoxColumn();
             colProcessMemory = new DataGridViewTextBoxColumn();
             colProcessDescription = new DataGridViewTextBoxColumn();
             colProcessStatus = new DataGridViewTextBoxColumn();
             colProcessType = new DataGridViewTextBoxColumn();
-
-            // DataGridView для служб
+            tabPageInfoService = new TabPage();
             dataGridViewServices = new DataGridView();
             colServiceName = new DataGridViewTextBoxColumn();
             colServiceMemory = new DataGridViewTextBoxColumn();
             colServiceDescription = new DataGridViewTextBoxColumn();
             colServiceStatus = new DataGridViewTextBoxColumn();
             colServiceType = new DataGridViewTextBoxColumn();
-
-            // DataGridView для скриптов
+            tabPageScript = new TabPage();
             dataGridViewScripts = new DataGridView();
             colScriptName = new DataGridViewTextBoxColumn();
-            colScriptMemory = new DataGridViewTextBoxColumn();
             colScriptDescription = new DataGridViewTextBoxColumn();
             colScriptStatus = new DataGridViewTextBoxColumn();
             colScriptType = new DataGridViewTextBoxColumn();
-
-            groupBox1.SuspendLayout();
+            colScriptControl = new DataGridViewButtonColumn();
+            btnAddScript = new Button();
+            btnBackupScript = new Button();
             tabControl.SuspendLayout();
+            tabPageMonitoring.SuspendLayout();
+            gbCPU.SuspendLayout();
+            gbRAM.SuspendLayout();
+            gbGPU.SuspendLayout();
+            gbDisk.SuspendLayout();
+            tabPageInfoProccess.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dataGridViewProcesses).BeginInit();
+            tabPageInfoService.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dataGridViewServices).BeginInit();
+            tabPageScript.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dataGridViewScripts).BeginInit();
             SuspendLayout();
             // 
             // rtbLogger
             // 
             rtbLogger.Font = new Font("Lucida Console", 9.75F, FontStyle.Regular, GraphicsUnit.Point, 204);
-            rtbLogger.Location = new Point(12, 478);
+            rtbLogger.Location = new Point(12, 520);
             rtbLogger.Name = "rtbLogger";
             rtbLogger.ReadOnly = true;
-            rtbLogger.Size = new Size(760, 142);
+            rtbLogger.Size = new Size(1060, 120);
             rtbLogger.TabIndex = 0;
             rtbLogger.Text = "";
-            rtbLogger.TextChanged += rtbLogger_TextChanged;
             // 
             // btnSaveLog
             // 
-            btnSaveLog.Location = new Point(697, 626);
+            btnSaveLog.Location = new Point(997, 646);
             btnSaveLog.Name = "btnSaveLog";
             btnSaveLog.Size = new Size(75, 23);
             btnSaveLog.TabIndex = 1;
@@ -108,7 +96,7 @@
             // 
             // btnClearLog
             // 
-            btnClearLog.Location = new Point(535, 626);
+            btnClearLog.Location = new Point(835, 646);
             btnClearLog.Name = "btnClearLog";
             btnClearLog.Size = new Size(75, 23);
             btnClearLog.TabIndex = 2;
@@ -118,7 +106,7 @@
             // 
             // btnCopyLog
             // 
-            btnCopyLog.Location = new Point(616, 626);
+            btnCopyLog.Location = new Point(916, 646);
             btnCopyLog.Name = "btnCopyLog";
             btnCopyLog.Size = new Size(75, 23);
             btnCopyLog.TabIndex = 3;
@@ -126,19 +114,9 @@
             btnCopyLog.UseVisualStyleBackColor = true;
             btnCopyLog.Click += btnCopyLog_Click;
             // 
-            // btnTestLogger
-            // 
-            btnTestLogger.Location = new Point(12, 449);
-            btnTestLogger.Name = "btnTestLogger";
-            btnTestLogger.Size = new Size(75, 23);
-            btnTestLogger.TabIndex = 4;
-            btnTestLogger.Text = "btnTestLog";
-            btnTestLogger.UseVisualStyleBackColor = true;
-            btnTestLogger.Click += btnTestLogger_Click;
-            // 
             // btnOffPcTimer
             // 
-            btnOffPcTimer.Location = new Point(616, 12);
+            btnOffPcTimer.Location = new Point(916, 12);
             btnOffPcTimer.Name = "btnOffPcTimer";
             btnOffPcTimer.Size = new Size(75, 23);
             btnOffPcTimer.TabIndex = 5;
@@ -148,7 +126,7 @@
             // 
             // btnCancelOffpc
             // 
-            btnCancelOffpc.Location = new Point(697, 12);
+            btnCancelOffpc.Location = new Point(997, 12);
             btnCancelOffpc.Name = "btnCancelOffpc";
             btnCancelOffpc.Size = new Size(75, 23);
             btnCancelOffpc.TabIndex = 6;
@@ -156,132 +134,9 @@
             btnCancelOffpc.UseVisualStyleBackColor = true;
             btnCancelOffpc.Click += btnCancelOffpc_Click;
             // 
-            // groupBox1
-            // 
-            groupBox1.Controls.Add(label5);
-            groupBox1.Controls.Add(btnStopMonitoring);
-            groupBox1.Controls.Add(btnStartMonitoring);
-            groupBox1.Controls.Add(label4);
-            groupBox1.Controls.Add(label3);
-            groupBox1.Controls.Add(label2);
-            groupBox1.Controls.Add(label1);
-            groupBox1.Controls.Add(tbMonitoringHDD);
-            groupBox1.Controls.Add(tbMonitoringGPU);
-            groupBox1.Controls.Add(tbMonitorCPU);
-            groupBox1.Controls.Add(tbMonitoringRAM);
-            groupBox1.Location = new Point(12, 41);
-            groupBox1.Name = "groupBox1";
-            groupBox1.Size = new Size(331, 381);
-            groupBox1.TabIndex = 7;
-            groupBox1.TabStop = false;
-            groupBox1.Text = "monitoring resources";
-            // 
-            // label5
-            // 
-            label5.AutoSize = true;
-            label5.Location = new Point(100, 356);
-            label5.Name = "label5";
-            label5.Size = new Size(143, 15);
-            label5.TabIndex = 11;
-            label5.Text = "Start and stop monitoring";
-            label5.Click += label5_Click;
-            // 
-            // btnStopMonitoring
-            // 
-            btnStopMonitoring.Location = new Point(11, 352);
-            btnStopMonitoring.Name = "btnStopMonitoring";
-            btnStopMonitoring.Size = new Size(75, 23);
-            btnStopMonitoring.TabIndex = 10;
-            btnStopMonitoring.Text = "Stop";
-            btnStopMonitoring.UseVisualStyleBackColor = true;
-            btnStopMonitoring.Click += btnStopMonitoring_Click;
-            // 
-            // btnStartMonitoring
-            // 
-            btnStartMonitoring.Location = new Point(249, 352);
-            btnStartMonitoring.Name = "btnStartMonitoring";
-            btnStartMonitoring.Size = new Size(75, 23);
-            btnStartMonitoring.TabIndex = 9;
-            btnStartMonitoring.Text = "Start";
-            btnStartMonitoring.UseVisualStyleBackColor = true;
-            btnStartMonitoring.Click += btnStartMonitoring_Click;
-            // 
-            // label4
-            // 
-            label4.AutoSize = true;
-            label4.Location = new Point(169, 185);
-            label4.Name = "label4";
-            label4.Size = new Size(74, 15);
-            label4.TabIndex = 8;
-            label4.Text = "Disk storage:";
-            // 
-            // label3
-            // 
-            label3.AutoSize = true;
-            label3.Location = new Point(168, 25);
-            label3.Name = "label3";
-            label3.Size = new Size(39, 15);
-            label3.TabIndex = 7;
-            label3.Text = "RAM: ";
-            // 
-            // label2
-            // 
-            label2.AutoSize = true;
-            label2.Location = new Point(7, 185);
-            label2.Name = "label2";
-            label2.Size = new Size(36, 15);
-            label2.TabIndex = 6;
-            label2.Text = "GPU: ";
-            // 
-            // label1
-            // 
-            label1.AutoSize = true;
-            label1.Location = new Point(7, 25);
-            label1.Name = "label1";
-            label1.Size = new Size(36, 15);
-            label1.TabIndex = 5;
-            label1.Text = "CPU: ";
-            // 
-            // tbMonitoringHDD
-            // 
-            tbMonitoringHDD.Location = new Point(169, 203);
-            tbMonitoringHDD.Multiline = true;
-            tbMonitoringHDD.Name = "tbMonitoringHDD";
-            tbMonitoringHDD.ScrollBars = ScrollBars.Vertical;
-            tbMonitoringHDD.Size = new Size(155, 138);
-            tbMonitoringHDD.TabIndex = 3;
-            // 
-            // tbMonitoringGPU
-            // 
-            tbMonitoringGPU.Location = new Point(8, 203);
-            tbMonitoringGPU.Multiline = true;
-            tbMonitoringGPU.Name = "tbMonitoringGPU";
-            tbMonitoringGPU.ScrollBars = ScrollBars.Vertical;
-            tbMonitoringGPU.Size = new Size(155, 138);
-            tbMonitoringGPU.TabIndex = 1;
-            // 
-            // tbMonitorCPU
-            // 
-            tbMonitorCPU.Location = new Point(7, 43);
-            tbMonitorCPU.Multiline = true;
-            tbMonitorCPU.Name = "tbMonitorCPU";
-            tbMonitorCPU.ScrollBars = ScrollBars.Vertical;
-            tbMonitorCPU.Size = new Size(156, 138);
-            tbMonitorCPU.TabIndex = 0;
-            // 
-            // tbMonitoringRAM
-            // 
-            tbMonitoringRAM.Location = new Point(169, 43);
-            tbMonitoringRAM.Multiline = true;
-            tbMonitoringRAM.Name = "tbMonitoringRAM";
-            tbMonitoringRAM.ScrollBars = ScrollBars.Vertical;
-            tbMonitoringRAM.Size = new Size(155, 138);
-            tbMonitoringRAM.TabIndex = 2;
-            tbMonitoringRAM.TextChanged += tbMonitoringRAM_TextChanged;
-            // 
             // btnAdminRights
             // 
-            btnAdminRights.Location = new Point(12, 626);
+            btnAdminRights.Location = new Point(12, 646);
             btnAdminRights.Name = "btnAdminRights";
             btnAdminRights.Size = new Size(75, 23);
             btnAdminRights.TabIndex = 8;
@@ -292,7 +147,7 @@
             // label6
             // 
             label6.AutoSize = true;
-            label6.Location = new Point(12, 9);
+            label6.Location = new Point(12, 15);
             label6.Name = "label6";
             label6.Size = new Size(46, 15);
             label6.TabIndex = 9;
@@ -301,7 +156,8 @@
             // lblRights
             // 
             lblRights.AutoSize = true;
-            lblRights.Location = new Point(64, 9);
+            lblRights.ForeColor = Color.Red;
+            lblRights.Location = new Point(64, 15);
             lblRights.Name = "lblRights";
             lblRights.Size = new Size(34, 15);
             lblRights.TabIndex = 10;
@@ -309,14 +165,143 @@
             // 
             // tabControl
             // 
+            tabControl.Controls.Add(tabPageMonitoring);
             tabControl.Controls.Add(tabPageInfoProccess);
             tabControl.Controls.Add(tabPageInfoService);
             tabControl.Controls.Add(tabPageScript);
-            tabControl.Location = new Point(349, 41);
+            tabControl.Location = new Point(12, 41);
             tabControl.Name = "tabControl";
             tabControl.SelectedIndex = 0;
-            tabControl.Size = new Size(423, 381);
+            tabControl.Size = new Size(1060, 473);
             tabControl.TabIndex = 11;
+            // 
+            // tabPageMonitoring
+            // 
+            tabPageMonitoring.Controls.Add(gbCPU);
+            tabPageMonitoring.Controls.Add(gbRAM);
+            tabPageMonitoring.Controls.Add(gbGPU);
+            tabPageMonitoring.Controls.Add(gbDisk);
+            tabPageMonitoring.Controls.Add(btnStopMonitoring);
+            tabPageMonitoring.Controls.Add(btnStartMonitoring);
+            tabPageMonitoring.Location = new Point(4, 24);
+            tabPageMonitoring.Name = "tabPageMonitoring";
+            tabPageMonitoring.Padding = new Padding(3);
+            tabPageMonitoring.Size = new Size(1052, 445);
+            tabPageMonitoring.TabIndex = 0;
+            tabPageMonitoring.Text = "Monitoring";
+            tabPageMonitoring.UseVisualStyleBackColor = true;
+            // 
+            // gbCPU
+            // 
+            gbCPU.Controls.Add(tbMonitorCPU);
+            gbCPU.Location = new Point(6, 20);
+            gbCPU.Name = "gbCPU";
+            gbCPU.Size = new Size(230, 419);
+            gbCPU.TabIndex = 0;
+            gbCPU.TabStop = false;
+            gbCPU.Text = "CPU";
+            // 
+            // tbMonitorCPU
+            // 
+            tbMonitorCPU.Dock = DockStyle.Fill;
+            tbMonitorCPU.Font = new Font("Consolas", 9F);
+            tbMonitorCPU.Location = new Point(3, 19);
+            tbMonitorCPU.Multiline = true;
+            tbMonitorCPU.Name = "tbMonitorCPU";
+            tbMonitorCPU.ReadOnly = true;
+            tbMonitorCPU.ScrollBars = ScrollBars.Vertical;
+            tbMonitorCPU.Size = new Size(224, 397);
+            tbMonitorCPU.TabIndex = 0;
+            // 
+            // gbRAM
+            // 
+            gbRAM.Controls.Add(tbMonitoringRAM);
+            gbRAM.Location = new Point(478, 20);
+            gbRAM.Name = "gbRAM";
+            gbRAM.Size = new Size(230, 413);
+            gbRAM.TabIndex = 1;
+            gbRAM.TabStop = false;
+            gbRAM.Text = "RAM";
+            // 
+            // tbMonitoringRAM
+            // 
+            tbMonitoringRAM.Dock = DockStyle.Fill;
+            tbMonitoringRAM.Font = new Font("Consolas", 9F);
+            tbMonitoringRAM.Location = new Point(3, 19);
+            tbMonitoringRAM.Multiline = true;
+            tbMonitoringRAM.Name = "tbMonitoringRAM";
+            tbMonitoringRAM.ReadOnly = true;
+            tbMonitoringRAM.ScrollBars = ScrollBars.Vertical;
+            tbMonitoringRAM.Size = new Size(224, 391);
+            tbMonitoringRAM.TabIndex = 1;
+            // 
+            // gbGPU
+            // 
+            gbGPU.Controls.Add(tbMonitoringGPU);
+            gbGPU.Location = new Point(242, 20);
+            gbGPU.Name = "gbGPU";
+            gbGPU.Size = new Size(230, 416);
+            gbGPU.TabIndex = 2;
+            gbGPU.TabStop = false;
+            gbGPU.Text = "GPU";
+            // 
+            // tbMonitoringGPU
+            // 
+            tbMonitoringGPU.Dock = DockStyle.Fill;
+            tbMonitoringGPU.Font = new Font("Consolas", 9F);
+            tbMonitoringGPU.Location = new Point(3, 19);
+            tbMonitoringGPU.Multiline = true;
+            tbMonitoringGPU.Name = "tbMonitoringGPU";
+            tbMonitoringGPU.ReadOnly = true;
+            tbMonitoringGPU.ScrollBars = ScrollBars.Vertical;
+            tbMonitoringGPU.Size = new Size(224, 394);
+            tbMonitoringGPU.TabIndex = 2;
+            // 
+            // gbDisk
+            // 
+            gbDisk.Controls.Add(tbMonitoringHDD);
+            gbDisk.Location = new Point(714, 20);
+            gbDisk.Name = "gbDisk";
+            gbDisk.Size = new Size(230, 410);
+            gbDisk.TabIndex = 3;
+            gbDisk.TabStop = false;
+            gbDisk.Text = "Disk Storage";
+            // 
+            // tbMonitoringHDD
+            // 
+            tbMonitoringHDD.Dock = DockStyle.Fill;
+            tbMonitoringHDD.Font = new Font("Consolas", 9F);
+            tbMonitoringHDD.Location = new Point(3, 19);
+            tbMonitoringHDD.Multiline = true;
+            tbMonitoringHDD.Name = "tbMonitoringHDD";
+            tbMonitoringHDD.ReadOnly = true;
+            tbMonitoringHDD.ScrollBars = ScrollBars.Vertical;
+            tbMonitoringHDD.Size = new Size(224, 388);
+            tbMonitoringHDD.TabIndex = 3;
+            // 
+            // btnStopMonitoring
+            // 
+            btnStopMonitoring.BackColor = Color.Red;
+            btnStopMonitoring.ForeColor = Color.White;
+            btnStopMonitoring.Location = new Point(947, 397);
+            btnStopMonitoring.Name = "btnStopMonitoring";
+            btnStopMonitoring.Size = new Size(100, 30);
+            btnStopMonitoring.TabIndex = 4;
+            btnStopMonitoring.Text = "Stop";
+            btnStopMonitoring.UseVisualStyleBackColor = false;
+            btnStopMonitoring.Click += btnStopMonitoring_Click;
+            // 
+            // btnStartMonitoring
+            // 
+            btnStartMonitoring.BackColor = Color.Green;
+            btnStartMonitoring.ForeColor = Color.White;
+            btnStartMonitoring.Location = new Point(947, 361);
+            btnStartMonitoring.Name = "btnStartMonitoring";
+            btnStartMonitoring.Size = new Size(100, 30);
+            btnStartMonitoring.TabIndex = 5;
+            btnStartMonitoring.Text = "Start";
+            btnStartMonitoring.UseVisualStyleBackColor = false;
+            btnStartMonitoring.Click += btnStartMonitoring_Click;
             // 
             // tabPageInfoProccess
             // 
@@ -324,34 +309,10 @@
             tabPageInfoProccess.Location = new Point(4, 24);
             tabPageInfoProccess.Name = "tabPageInfoProccess";
             tabPageInfoProccess.Padding = new Padding(3);
-            tabPageInfoProccess.Size = new Size(415, 353);
-            tabPageInfoProccess.TabIndex = 0;
-            tabPageInfoProccess.Text = "Process";
+            tabPageInfoProccess.Size = new Size(1052, 445);
+            tabPageInfoProccess.TabIndex = 1;
+            tabPageInfoProccess.Text = "Processes";
             tabPageInfoProccess.UseVisualStyleBackColor = true;
-            tabPageInfoProccess.Click += tabPage1_Click;
-            // 
-            // tabPageInfoService
-            // 
-            tabPageInfoService.Controls.Add(dataGridViewServices);
-            tabPageInfoService.Location = new Point(4, 24);
-            tabPageInfoService.Name = "tabPageInfoService";
-            tabPageInfoService.Padding = new Padding(3);
-            tabPageInfoService.Size = new Size(415, 353);
-            tabPageInfoService.TabIndex = 1;
-            tabPageInfoService.Text = "Service";
-            tabPageInfoService.UseVisualStyleBackColor = true;
-            tabPageInfoService.Click += tabPage2_Click;
-            // 
-            // tabPageScript
-            // 
-            tabPageScript.Controls.Add(dataGridViewScripts);
-            tabPageScript.Location = new Point(4, 24);
-            tabPageScript.Name = "tabPageScript";
-            tabPageScript.Padding = new Padding(3);
-            tabPageScript.Size = new Size(415, 353);
-            tabPageScript.TabIndex = 2;
-            tabPageScript.Text = "Scripts";
-            tabPageScript.UseVisualStyleBackColor = true;
             // 
             // dataGridViewProcesses
             // 
@@ -359,44 +320,55 @@
             dataGridViewProcesses.AllowUserToDeleteRows = false;
             dataGridViewProcesses.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             dataGridViewProcesses.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dataGridViewProcesses.Columns.AddRange(new DataGridViewColumn[] {
-            colProcessName,
-            colProcessMemory,
-            colProcessDescription,
-            colProcessStatus,
-            colProcessType});
+            dataGridViewProcesses.Columns.AddRange(new DataGridViewColumn[] { colProcessName, colProcessMemory, colProcessDescription, colProcessStatus, colProcessType });
             dataGridViewProcesses.Dock = DockStyle.Fill;
             dataGridViewProcesses.Location = new Point(3, 3);
             dataGridViewProcesses.Name = "dataGridViewProcesses";
             dataGridViewProcesses.ReadOnly = true;
             dataGridViewProcesses.RowHeadersVisible = false;
-            dataGridViewProcesses.Size = new Size(409, 347);
+            dataGridViewProcesses.Size = new Size(1046, 439);
             dataGridViewProcesses.TabIndex = 0;
             // 
             // colProcessName
             // 
-            colProcessName.HeaderText = "Имя";
+            colProcessName.HeaderText = "Name";
             colProcessName.Name = "colProcessName";
+            colProcessName.ReadOnly = true;
             // 
             // colProcessMemory
             // 
-            colProcessMemory.HeaderText = "Память (МБ)";
+            colProcessMemory.HeaderText = "Memory (MB)";
             colProcessMemory.Name = "colProcessMemory";
+            colProcessMemory.ReadOnly = true;
             // 
             // colProcessDescription
             // 
-            colProcessDescription.HeaderText = "Описание";
+            colProcessDescription.HeaderText = "Description";
             colProcessDescription.Name = "colProcessDescription";
+            colProcessDescription.ReadOnly = true;
             // 
             // colProcessStatus
             // 
-            colProcessStatus.HeaderText = "Статус";
+            colProcessStatus.HeaderText = "Status";
             colProcessStatus.Name = "colProcessStatus";
+            colProcessStatus.ReadOnly = true;
             // 
             // colProcessType
             // 
-            colProcessType.HeaderText = "Тип";
+            colProcessType.HeaderText = "Type";
             colProcessType.Name = "colProcessType";
+            colProcessType.ReadOnly = true;
+            // 
+            // tabPageInfoService
+            // 
+            tabPageInfoService.Controls.Add(dataGridViewServices);
+            tabPageInfoService.Location = new Point(4, 24);
+            tabPageInfoService.Name = "tabPageInfoService";
+            tabPageInfoService.Padding = new Padding(3);
+            tabPageInfoService.Size = new Size(1052, 445);
+            tabPageInfoService.TabIndex = 2;
+            tabPageInfoService.Text = "Services";
+            tabPageInfoService.UseVisualStyleBackColor = true;
             // 
             // dataGridViewServices
             // 
@@ -404,44 +376,57 @@
             dataGridViewServices.AllowUserToDeleteRows = false;
             dataGridViewServices.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             dataGridViewServices.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dataGridViewServices.Columns.AddRange(new DataGridViewColumn[] {
-            colServiceName,
-            colServiceMemory,
-            colServiceDescription,
-            colServiceStatus,
-            colServiceType});
+            dataGridViewServices.Columns.AddRange(new DataGridViewColumn[] { colServiceName, colServiceMemory, colServiceDescription, colServiceStatus, colServiceType });
             dataGridViewServices.Dock = DockStyle.Fill;
             dataGridViewServices.Location = new Point(3, 3);
             dataGridViewServices.Name = "dataGridViewServices";
             dataGridViewServices.ReadOnly = true;
             dataGridViewServices.RowHeadersVisible = false;
-            dataGridViewServices.Size = new Size(409, 347);
+            dataGridViewServices.Size = new Size(1046, 439);
             dataGridViewServices.TabIndex = 0;
             // 
             // colServiceName
             // 
-            colServiceName.HeaderText = "Имя";
+            colServiceName.HeaderText = "Name";
             colServiceName.Name = "colServiceName";
+            colServiceName.ReadOnly = true;
             // 
             // colServiceMemory
             // 
-            colServiceMemory.HeaderText = "Память (МБ)";
+            colServiceMemory.HeaderText = "Memory (MB)";
             colServiceMemory.Name = "colServiceMemory";
+            colServiceMemory.ReadOnly = true;
             // 
             // colServiceDescription
             // 
-            colServiceDescription.HeaderText = "Описание";
+            colServiceDescription.HeaderText = "Display Name";
             colServiceDescription.Name = "colServiceDescription";
+            colServiceDescription.ReadOnly = true;
             // 
             // colServiceStatus
             // 
-            colServiceStatus.HeaderText = "Статус";
+            colServiceStatus.HeaderText = "Status";
             colServiceStatus.Name = "colServiceStatus";
+            colServiceStatus.ReadOnly = true;
             // 
             // colServiceType
             // 
-            colServiceType.HeaderText = "Тип";
+            colServiceType.HeaderText = "Start Type";
             colServiceType.Name = "colServiceType";
+            colServiceType.ReadOnly = true;
+            // 
+            // tabPageScript
+            // 
+            tabPageScript.Controls.Add(dataGridViewScripts);
+            tabPageScript.Controls.Add(btnAddScript);
+            tabPageScript.Controls.Add(btnBackupScript);
+            tabPageScript.Location = new Point(4, 24);
+            tabPageScript.Name = "tabPageScript";
+            tabPageScript.Padding = new Padding(3);
+            tabPageScript.Size = new Size(1052, 445);
+            tabPageScript.TabIndex = 3;
+            tabPageScript.Text = "Scripts";
+            tabPageScript.UseVisualStyleBackColor = true;
             // 
             // dataGridViewScripts
             // 
@@ -449,58 +434,78 @@
             dataGridViewScripts.AllowUserToDeleteRows = false;
             dataGridViewScripts.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             dataGridViewScripts.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dataGridViewScripts.Columns.AddRange(new DataGridViewColumn[] {
-            colScriptName,
-            colScriptMemory,
-            colScriptDescription,
-            colScriptStatus,
-            colScriptType});
+            dataGridViewScripts.Columns.AddRange(new DataGridViewColumn[] { colScriptName, colScriptDescription, colScriptStatus, colScriptType, colScriptControl });
             dataGridViewScripts.Dock = DockStyle.Fill;
             dataGridViewScripts.Location = new Point(3, 3);
             dataGridViewScripts.Name = "dataGridViewScripts";
             dataGridViewScripts.ReadOnly = true;
             dataGridViewScripts.RowHeadersVisible = false;
-            dataGridViewScripts.Size = new Size(409, 347);
+            dataGridViewScripts.Size = new Size(1046, 439);
             dataGridViewScripts.TabIndex = 0;
+            dataGridViewScripts.CellContentClick += DataGridViewScripts_CellContentClick;
             // 
             // colScriptName
             // 
-            colScriptName.HeaderText = "Имя";
+            colScriptName.HeaderText = "Name";
             colScriptName.Name = "colScriptName";
-            // 
-            // colScriptMemory
-            // 
-            colScriptMemory.HeaderText = "Память (МБ)";
-            colScriptMemory.Name = "colScriptMemory";
+            colScriptName.ReadOnly = true;
             // 
             // colScriptDescription
             // 
-            colScriptDescription.HeaderText = "Описание";
+            colScriptDescription.HeaderText = "Description";
             colScriptDescription.Name = "colScriptDescription";
+            colScriptDescription.ReadOnly = true;
             // 
             // colScriptStatus
             // 
-            colScriptStatus.HeaderText = "Статус";
+            colScriptStatus.HeaderText = "Status";
             colScriptStatus.Name = "colScriptStatus";
+            colScriptStatus.ReadOnly = true;
             // 
             // colScriptType
             // 
-            colScriptType.HeaderText = "Тип";
+            colScriptType.HeaderText = "Type";
             colScriptType.Name = "colScriptType";
+            colScriptType.ReadOnly = true;
+            // 
+            // colScriptControl
+            // 
+            colScriptControl.HeaderText = "Control";
+            colScriptControl.Name = "colScriptControl";
+            colScriptControl.ReadOnly = true;
+            colScriptControl.Text = "";
+            // 
+            // btnAddScript
+            // 
+            btnAddScript.Location = new Point(3, 408);
+            btnAddScript.Name = "btnAddScript";
+            btnAddScript.Size = new Size(100, 30);
+            btnAddScript.TabIndex = 1;
+            btnAddScript.Text = "Add Script";
+            btnAddScript.UseVisualStyleBackColor = true;
+            btnAddScript.Click += BtnAddScript_Click;
+            // 
+            // btnBackupScript
+            // 
+            btnBackupScript.Location = new Point(120, 408);
+            btnBackupScript.Name = "btnBackupScript";
+            btnBackupScript.Size = new Size(120, 30);
+            btnBackupScript.TabIndex = 2;
+            btnBackupScript.Text = "📁 Backup Script";
+            btnBackupScript.UseVisualStyleBackColor = true;
+            btnBackupScript.Click += BtnBackupScript_Click;
             // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(784, 661);
+            ClientSize = new Size(1084, 681);
             Controls.Add(tabControl);
             Controls.Add(lblRights);
             Controls.Add(label6);
             Controls.Add(btnAdminRights);
-            Controls.Add(groupBox1);
             Controls.Add(btnCancelOffpc);
             Controls.Add(btnOffPcTimer);
-            Controls.Add(btnTestLogger);
             Controls.Add(btnCopyLog);
             Controls.Add(btnClearLog);
             Controls.Add(btnSaveLog);
@@ -510,48 +515,54 @@
             Name = "MainForm";
             Text = "Admin Helper";
             Load += MainForm_Load;
-            groupBox1.ResumeLayout(false);
-            groupBox1.PerformLayout();
             tabControl.ResumeLayout(false);
+            tabPageMonitoring.ResumeLayout(false);
+            gbCPU.ResumeLayout(false);
+            gbCPU.PerformLayout();
+            gbRAM.ResumeLayout(false);
+            gbRAM.PerformLayout();
+            gbGPU.ResumeLayout(false);
+            gbGPU.PerformLayout();
+            gbDisk.ResumeLayout(false);
+            gbDisk.PerformLayout();
+            tabPageInfoProccess.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)dataGridViewProcesses).EndInit();
+            tabPageInfoService.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)dataGridViewServices).EndInit();
+            tabPageScript.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)dataGridViewScripts).EndInit();
             ResumeLayout(false);
             PerformLayout();
         }
         #endregion
 
-        // Существующие элементы
+        // Элементы управления
         private RichTextBox rtbLogger;
         private Button btnSaveLog;
         private Button btnClearLog;
         private Button btnCopyLog;
-        private Button btnTestLogger;
         private Button btnOffPcTimer;
         private Button btnCancelOffpc;
-        private GroupBox groupBox1;
-        private Label label4;
-        private Label label3;
-        private Label label2;
-        private Label label1;
-        private TextBox tbMonitoringHDD;
-        private TextBox tbMonitoringRAM;
-        private TextBox tbMonitoringGPU;
-        private TextBox tbMonitorCPU;
-        private Button btnStopMonitoring;
-        private Button btnStartMonitoring;
-        private Label label5;
         private Button btnAdminRights;
         private Label label6;
         private Label lblRights;
-
-        // Вкладки
         private TabControl tabControl;
-        private TabPage tabPageInfoProccess;
-        private TabPage tabPageInfoService;
-        private TabPage tabPageScript;
 
-        // DataGridView для процессов
+        // Вкладка Monitoring
+        private TabPage tabPageMonitoring;
+        private GroupBox gbCPU;
+        private TextBox tbMonitorCPU;
+        private GroupBox gbRAM;
+        private TextBox tbMonitoringRAM;
+        private GroupBox gbGPU;
+        private TextBox tbMonitoringGPU;
+        private GroupBox gbDisk;
+        private TextBox tbMonitoringHDD;
+        private Button btnStopMonitoring;
+        private Button btnStartMonitoring;
+
+        // Вкладка Processes
+        private TabPage tabPageInfoProccess;
         private DataGridView dataGridViewProcesses;
         private DataGridViewTextBoxColumn colProcessName;
         private DataGridViewTextBoxColumn colProcessMemory;
@@ -559,7 +570,8 @@
         private DataGridViewTextBoxColumn colProcessStatus;
         private DataGridViewTextBoxColumn colProcessType;
 
-        // DataGridView для служб
+        // Вкладка Services
+        private TabPage tabPageInfoService;
         private DataGridView dataGridViewServices;
         private DataGridViewTextBoxColumn colServiceName;
         private DataGridViewTextBoxColumn colServiceMemory;
@@ -567,12 +579,15 @@
         private DataGridViewTextBoxColumn colServiceStatus;
         private DataGridViewTextBoxColumn colServiceType;
 
-        // DataGridView для скриптов
+        // Вкладка Scripts
+        private TabPage tabPageScript;
         private DataGridView dataGridViewScripts;
         private DataGridViewTextBoxColumn colScriptName;
-        private DataGridViewTextBoxColumn colScriptMemory;
         private DataGridViewTextBoxColumn colScriptDescription;
         private DataGridViewTextBoxColumn colScriptStatus;
         private DataGridViewTextBoxColumn colScriptType;
+        private DataGridViewButtonColumn colScriptControl;
+        private Button btnAddScript;
+        private Button btnBackupScript;
     }
 }

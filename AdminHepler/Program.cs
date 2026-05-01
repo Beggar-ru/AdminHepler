@@ -1,4 +1,4 @@
-namespace AdminHepler
+namespace AdminHelper
 {
     internal static class Program
     {

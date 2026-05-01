@@ -5,114 +5,214 @@ using AdminHepler.Scripts;
 using AdminHepler.Services;
 using AdminHepler.Utils;
 using System.Diagnostics;
+using System.Management;
 using System.Security.Principal;
+using System.ServiceProcess;
 using System.Text;
 using System.Windows.Forms;
-using System.Diagnostics;
-using System.ServiceProcess;
-using System.Management;
 
-namespace AdminHepler
+namespace AdminHelper
 {
     public partial class MainForm : Form
     {
         private readonly ILogger _logger;
         private IMonitoringService _monitoringService;
         private System.Windows.Forms.Timer _updateTimer;
+        private bool _isMonitoring = false;
+        private List<ScriptItem> _scripts;
 
         public MainForm()
         {
             InitializeComponent();
-            StartMonitoring();
+
             _logger = new LoggerService(rtbLogger);
             _monitoringService = new MonitoringService(_logger);
             _monitoringService.DataUpdated += OnMonitoringDataUpdated;
-            SetupMonitoringTextBoxes();
-            btnStopMonitoring.Enabled = false;
+
+            _scripts = new List<ScriptItem>();
+            InitializeScripts();
+            CheckAdminRights();
 
             _logger.Info("Приложение запущено");
             _logger.Info($"Папка для логов: {FileUtils.GetLogsFolderPath()}");
         }
-        
+
+        private void InitializeScripts()
+        {
+            _scripts.Add(new ScriptItem
+            {
+                Id = 1,
+                Name = "CleanTemp",
+                Description = "Очистка временных файлов",
+                Status = "Stopped",
+                Type = "PowerShell",
+                IsRunning = false
+            });
+            _scripts.Add(new ScriptItem
+            {
+                Id = 2,
+                Name = "RestartService",
+                Description = "Перезапуск службы",
+                Status = "Stopped",
+                Type = "Built-in",
+                IsRunning = false
+            });
+            _scripts.Add(new ScriptItem
+            {
+                Id = 3,
+                Name = "Backup",
+                Description = "Резервное копирование",
+                Status = "Stopped",
+                Type = "Batch",
+                IsRunning = false
+            });
+
+            UpdateScriptsGrid();
+        }
+
+        private void UpdateScriptsGrid()
+        {
+            dataGridViewScripts.Rows.Clear();
+            foreach (var script in _scripts)
+            {
+                int rowIndex = dataGridViewScripts.Rows.Add(
+                    script.Name,
+                    script.Description,
+                    script.Status,
+                    script.Type,
+                    script.IsRunning ? "⏹ Stop" : "▶ Start"
+                );
+
+                // Цвет кнопки в зависимости от статуса
+                var buttonCell = (DataGridViewButtonCell)dataGridViewScripts.Rows[rowIndex].Cells["colScriptControl"];
+                buttonCell.Style.BackColor = script.IsRunning ? Color.Red : Color.Green;
+                buttonCell.Style.ForeColor = Color.White;
+            }
+        }
+
+        private void CheckAdminRights()
+        {
+            bool isAdmin = new WindowsPrincipal(WindowsIdentity.GetCurrent())
+                .IsInRole(WindowsBuiltInRole.Administrator);
+
+            lblRights.Text = isAdmin ? "Administrator" : "User";
+            lblRights.ForeColor = isAdmin ? Color.Green : Color.Red;
+            btnAdminRights.Enabled = !isAdmin;
+        }
+
         private void StartMonitoring()
         {
-            /*
+            if (_isMonitoring) return;
+
+            _monitoringService.StartMonitoring();
+
             _updateTimer = new System.Windows.Forms.Timer();
-            _updateTimer.Interval = 2000; // 2 секунды
+            _updateTimer.Interval = 2000;
             _updateTimer.Tick += UpdateTimer_Tick;
             _updateTimer.Start();
-            */
 
-            // Первоначальная загрузка
-            UpdateProcesses();
-            UpdateServices();
-            LoadScripts();
+            _isMonitoring = true;
+            btnStartMonitoring.Enabled = false;
+            btnStopMonitoring.Enabled = true;
+
+            _logger.Success("Мониторинг ресурсов запущен");
         }
-        
-        private void UpdateTimer_Tick(object sender, EventArgs e)
+
+        private void StopMonitoring()
         {
-            UpdateProcesses();
-            UpdateServices();
+            if (!_isMonitoring) return;
+
+            _monitoringService.StopMonitoring();
+            _updateTimer?.Stop();
+            _updateTimer?.Dispose();
+
+            _isMonitoring = false;
+            btnStartMonitoring.Enabled = true;
+            btnStopMonitoring.Enabled = false;
+
+            _logger.Info("Мониторинг ресурсов остановлен");
+        }
+
+        private async void UpdateTimer_Tick(object sender, EventArgs e)
+        {
+            await Task.Run(() =>
+            {
+                UpdateProcesses();
+                UpdateServices();
+            });
         }
 
         private void UpdateProcesses()
         {
-            dataGridViewProcesses.Rows.Clear();
-
             try
             {
-                var processes = Process.GetProcesses();
-                foreach (var proc in processes)
-                {
-                    try
+                var processes = Process.GetProcesses()
+                    .Take(100) // Ограничим для производительности
+                    .Select(p => new
                     {
-                        string description = "";
-                        try
-                        {
-                            description = proc.MainModule?.FileVersionInfo?.FileDescription ?? "";
-                        }
-                        catch { }
+                        p.ProcessName,
+                        MemoryMB = p.WorkingSet64 / 1024 / 1024,
+                        Description = SafeGetDescription(p),
+                        Status = p.Responding ? "Running" : "Not Responding",
+                        Type = "Process"
+                    })
+                    .ToList();
 
+                Invoke(new Action(() =>
+                {
+                    dataGridViewProcesses.Rows.Clear();
+                    foreach (var proc in processes)
+                    {
                         dataGridViewProcesses.Rows.Add(
                             proc.ProcessName,
-                            (proc.WorkingSet64 / 1024 / 1024).ToString(), // MB
-                            description,
-                            proc.Responding ? "Работает" : "Нет ответа",
-                            "Process"
+                            proc.MemoryMB,
+                            proc.Description,
+                            proc.Status,
+                            proc.Type
                         );
                     }
-                    catch { }
-                }
+                }));
             }
             catch (Exception ex)
             {
-                LogMessage($"Ошибка обновления процессов: {ex.Message}");
+                _logger.Error($"Ошибка обновления процессов: {ex.Message}");
             }
         }
 
         private void UpdateServices()
         {
-            dataGridViewServices.Rows.Clear();
-
             try
             {
-                var services = ServiceController.GetServices();
-                foreach (var service in services)
-                {
-                    string startType = GetServiceStartType(service.ServiceName);
+                var services = ServiceController.GetServices()
+                    .Take(100)
+                    .Select(s => new
+                    {
+                        s.ServiceName,
+                        MemoryMB = 0,
+                        s.DisplayName,
+                        Status = s.Status.ToString(),
+                        StartType = GetServiceStartType(s.ServiceName)
+                    })
+                    .ToList();
 
-                    dataGridViewServices.Rows.Add(
-                        service.ServiceName,
-                        "N/A", // Память для служб сложнее получить
-                        service.DisplayName,
-                        service.Status.ToString(),
-                        startType
-                    );
-                }
+                Invoke(new Action(() =>
+                {
+                    dataGridViewServices.Rows.Clear();
+                    foreach (var svc in services)
+                    {
+                        dataGridViewServices.Rows.Add(
+                            svc.ServiceName,
+                            svc.MemoryMB,
+                            svc.DisplayName,
+                            svc.Status,
+                            svc.StartType
+                        );
+                    }
+                }));
             }
             catch (Exception ex)
             {
-                LogMessage($"Ошибка обновления служб: {ex.Message}");
+                _logger.Error($"Ошибка обновления служб: {ex.Message}");
             }
         }
 
@@ -131,34 +231,16 @@ namespace AdminHepler
             }
         }
 
-        private void LoadScripts()
+        private string SafeGetDescription(Process proc)
         {
-            dataGridViewScripts.Rows.Clear();
-
-            // Пример встроенных скриптов
-            dataGridViewScripts.Rows.Add("CleanTemp", "0", "Очистка временных файлов", "Включен", "PowerShell");
-            dataGridViewScripts.Rows.Add("RestartService", "0", "Перезапуск службы", "Включен", "Встроенный");
-            dataGridViewScripts.Rows.Add("Backup", "0", "Резервное копирование", "Выключен", "bat");
-        }
-
-        private void LogMessage(string message)
-        {
-            if (rtbLogger.InvokeRequired)
+            try
             {
-                rtbLogger.Invoke(new Action(() => LogMessage(message)));
-                return;
+                return proc.MainModule?.FileVersionInfo?.FileDescription ?? "";
             }
-
-            rtbLogger.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}{Environment.NewLine}");
-        }
-
-
-        private void SetupMonitoringTextBoxes()
-        {
-            tbMonitorCPU.ReadOnly = true;
-            tbMonitoringRAM.ReadOnly = true;
-            tbMonitoringGPU.ReadOnly = true;
-            tbMonitoringHDD.ReadOnly = true;
+            catch
+            {
+                return "";
+            }
         }
 
         private void OnMonitoringDataUpdated(object sender, SystemInfo info)
@@ -175,107 +257,75 @@ namespace AdminHepler
 
         private void UpdateMonitoringDisplay(SystemInfo info)
         {
-            // === CPU ===
             var cpuText = new StringBuilder();
-            cpuText.AppendLine($"Загрузка: {info.CpuLoad:F1}%");
-            cpuText.AppendLine($"Температура: {info.CpuTemperature:F1}°C");
-            cpuText.AppendLine($"Частота: {info.CpuFrequency:F2} GHz");
+            cpuText.AppendLine($"Load: {info.CpuLoad:F1}%");
+            cpuText.AppendLine($"Temp: {info.CpuTemperature:F1}°C");
+            cpuText.AppendLine($"Freq: {info.CpuFrequency:F2} GHz");
             if (info.CpuPower > 0)
-                cpuText.AppendLine($"Потребление: {info.CpuPower:F1}W");
+                cpuText.AppendLine($"Power: {info.CpuPower:F1}W");
             tbMonitorCPU.Text = cpuText.ToString();
             ColorizeTextBox(tbMonitorCPU, info.CpuLoad);
 
-            // === GPU ===
             var gpuText = new StringBuilder();
-            gpuText.AppendLine($"Загрузка: {info.GpuLoad:F1}%");
-            gpuText.AppendLine($"Температура: {info.GpuTemperature:F1}°C");
+            gpuText.AppendLine($"Load: {info.GpuLoad:F1}%");
+            gpuText.AppendLine($"Temp: {info.GpuTemperature:F1}°C");
             if (info.GpuMemoryTotal > 0)
-                gpuText.AppendLine($"Память: {info.GpuMemoryUsed:F0} / {info.GpuMemoryTotal:F0} MB");
+                gpuText.AppendLine($"VRAM: {info.GpuMemoryUsed:F0} / {info.GpuMemoryTotal:F0} MB");
             if (info.GpuFrequency > 0)
-                gpuText.AppendLine($"Частота: {info.GpuFrequency:F0} MHz");
+                gpuText.AppendLine($"Clock: {info.GpuFrequency:F0} MHz");
             if (info.GpuFanSpeed > 0)
-                gpuText.AppendLine($"Вентилятор: {info.GpuFanSpeed:F0} RPM");
+                gpuText.AppendLine($"Fan: {info.GpuFanSpeed:F0} RPM");
             tbMonitoringGPU.Text = gpuText.ToString();
             ColorizeTextBox(tbMonitoringGPU, info.GpuLoad);
 
-            // === RAM ===
             var ramText = new StringBuilder();
-            ramText.AppendLine($"Использовано: {info.RamUsed:F1} / {info.RamTotal:F1} GB");
-            ramText.AppendLine($"Загрузка: {info.RamLoad:F1}%");
+            ramText.AppendLine($"Used: {info.RamUsed:F1} / {info.RamTotal:F1} GB");
+            ramText.AppendLine($"Load: {info.RamLoad:F1}%");
             tbMonitoringRAM.Text = ramText.ToString();
             ColorizeTextBox(tbMonitoringRAM, info.RamLoad);
 
-            // === DISKS ===
             var diskText = new StringBuilder();
             if (info.Disks.Count > 0)
             {
                 foreach (var disk in info.Disks)
                 {
                     diskText.AppendLine($"{disk.Name} ({disk.Model})");
-                    diskText.AppendLine($"Тип: {disk.Type}");
-                    diskText.AppendLine($"Всего: {disk.TotalSize:F0} GB");
-                    diskText.AppendLine($"Свободно: {disk.FreeSpace:F0} GB");
-                    diskText.AppendLine($"Загрузка: {disk.UsagePercent:F1}%");
+                    diskText.AppendLine($"Type: {disk.Type}");
+                    diskText.AppendLine($"Total: {disk.TotalSize:F0} GB");
+                    diskText.AppendLine($"Free: {disk.FreeSpace:F0} GB");
+                    diskText.AppendLine($"Load: {disk.UsagePercent:F1}%");
                     if (disk.Temperature > 0)
-                        diskText.AppendLine($"Температура: {disk.Temperature:F1}°C");
+                        diskText.AppendLine($"Temp: {disk.Temperature:F1}°C");
+                    diskText.AppendLine("-------------------");
                 }
             }
             else
             {
-                diskText.AppendLine("Диски не обнаружены");
+                diskText.AppendLine("No disks detected");
             }
             tbMonitoringHDD.Text = diskText.ToString();
-
-            if (info.Disks.Count > 0)
-            {
-                var maxDiskUsage = info.Disks.Max(d => d.UsagePercent);
-                ColorizeTextBox(tbMonitoringHDD, maxDiskUsage);
-            }
         }
 
         private void ColorizeTextBox(TextBox textBox, double percentage)
         {
             if (percentage < 70)
-            {
                 textBox.ForeColor = Color.Green;
-            }
             else if (percentage < 85)
-            {
                 textBox.ForeColor = Color.Orange;
-            }
             else
-            {
                 textBox.ForeColor = Color.Red;
-            }
         }
 
-        private void rtbLogger_TextChanged(object sender, EventArgs e)
-        {
+        // === ОБРАБОТЧИКИ СОБЫТИЙ ===
 
+        private void btnStartMonitoring_Click(object sender, EventArgs e)
+        {
+            StartMonitoring();
         }
 
-        private void btnTestLogger_Click(object sender, EventArgs e)
+        private void btnStopMonitoring_Click(object sender, EventArgs e)
         {
-            _logger.Info("Это информационное сообщение");
-            _logger.Warning("Это предупреждение");
-            _logger.Error("Это ошибка");
-            _logger.Success("Это успешное действие");
-        }
-
-
-        private void btnCopyLog_Click(object sender, EventArgs e)
-        {
-            if (!string.IsNullOrEmpty(rtbLogger.Text))
-            {
-                Clipboard.SetText(rtbLogger.Text);
-                _logger.Info("Лог скопирован в буфер обмена");
-            }
-        }
-
-        private void btnClearLog_Click(object sender, EventArgs e)
-        {
-            _logger.Clear();
-            _logger.Info("Логи очищены");
+            StopMonitoring();
         }
 
         private void btnSaveLog_Click(object sender, EventArgs e)
@@ -291,6 +341,21 @@ namespace AdminHepler
             }
         }
 
+        private void btnClearLog_Click(object sender, EventArgs e)
+        {
+            _logger.Clear();
+            _logger.Info("Логи очищены");
+        }
+
+        private void btnCopyLog_Click(object sender, EventArgs e)
+        {
+            if (!string.IsNullOrEmpty(rtbLogger.Text))
+            {
+                Clipboard.SetText(rtbLogger.Text);
+                _logger.Info("Лог скопирован в буфер обмена");
+            }
+        }
+
         private void btnOffPcTimer_Click(object sender, EventArgs e)
         {
             using (var frm = new frmShutdownTimer(_logger))
@@ -301,51 +366,13 @@ namespace AdminHepler
 
         private void btnCancelOffpc_Click(object sender, EventArgs e)
         {
-            var tools = new Scripts.SystemTools(_logger);
+            var tools = new SystemTools(_logger);
             tools.AbortShutdown();
         }
 
-        private void btnStopMonitoring_Click(object sender, EventArgs e)
+        private void btnAdminRights_Click(object sender, EventArgs e)
         {
-            try
-            {
-                _monitoringService.StopMonitoring();
-                _logger.Info("Мониторинг ресурсов остановлен");
-
-                btnStartMonitoring.Enabled = true;
-                btnStopMonitoring.Enabled = false;
-
-                tbMonitorCPU.Text = "0.0%";
-                tbMonitoringGPU.Text = "0.0%";
-                tbMonitoringRAM.Text = "0.0 / 0.0 GB";
-                tbMonitoringHDD.Text = "0.0%";
-
-                tbMonitorCPU.ForeColor = Color.Black;
-                tbMonitoringGPU.ForeColor = Color.Black;
-                tbMonitoringRAM.ForeColor = Color.Black;
-                tbMonitoringHDD.ForeColor = Color.Black;
-            }
-            catch (Exception ex)
-            {
-                _logger.Error($"Ошибка остановки мониторинга: {ex.Message}");
-            }
-        }
-
-        private void btnStartMonitoring_Click(object sender, EventArgs e)
-        {
-            try
-            {
-                _monitoringService.StartMonitoring();
-                _logger.Success("Мониторинг ресурсов запущен");
-
-                btnStartMonitoring.Enabled = false;
-                btnStopMonitoring.Enabled = true;
-
-            }
-            catch (Exception ex)
-            {
-                _logger.Error($"Ошибка запуска мониторинга: {ex.Message}");
-            }
+            RestartAsAdmin();
         }
 
         private void RestartAsAdmin()
@@ -358,79 +385,202 @@ namespace AdminHepler
                     Verb = "runas",
                     UseShellExecute = true
                 };
-                _logger.Info("Request admin rights...");
                 Process.Start(startInfo);
-                _logger.Success("Admin rights granted, restarting...");
                 Application.Exit();
             }
-            catch (System.ComponentModel.Win32Exception ex)
+            catch
             {
-                _logger.Warning("Admin rights denied by user.");
+                _logger.Warning("Права администратора отклонены");
             }
-            catch (Exception ex)
-            {
-                _logger.Error($"Failed to restart as admin: {ex.Message}");
-            }
-        }
-
-        protected override void OnFormClosing(FormClosingEventArgs e)
-        {
-            _monitoringService?.StopMonitoring();
-            _monitoringService?.Dispose();
-
-            base.OnFormClosing(e);
         }
 
         private void MainForm_Load(object sender, EventArgs e)
         {
-            if (Utils.IsAdminUtils.IsAdmin())
+            CheckAdminRights();
+        }
+
+        // === НОВЫЕ МЕТОДЫ ДЛЯ СКРИПТОВ ===
+
+        private void DataGridViewScripts_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex != dataGridViewScripts.Columns["colScriptControl"].Index)
+                return;
+
+            var script = _scripts[e.RowIndex];
+
+            if (script.IsRunning)
             {
-                btnAdminRights.Enabled = false;
-                _logger.Info("Запущено с правами администратора");
-                lblRights.Text = "Admin";
-                lblRights.ForeColor = Color.Red;
+                // Остановить скрипт
+                script.IsRunning = false;
+                script.Status = "Stopped";
+                _logger.Info($"Скрипт '{script.Name}' остановлен");
             }
             else
             {
-                btnAdminRights.Enabled = true;
-                _logger.Warning("Запущено без прав администратора. Некоторые функции могут быть недоступны.");
-                lblRights.Text = "User";
-                lblRights.ForeColor = Color.Blue;
+                // Запустить скрипт
+                script.IsRunning = true;
+                script.Status = "Running";
+                _logger.Success($"Скрипт '{script.Name}' запущен");
+
+                // Здесь можно добавить реальное выполнение скрипта
+                ExecuteScript(script);
             }
-            _monitoringService = new MonitoringService(_logger);
-            _monitoringService.DataUpdated += OnMonitoringDataUpdated;
 
-            bool isAdmin = new System.Security.Principal.WindowsPrincipal(
-                System.Security.Principal.WindowsIdentity.GetCurrent())
-                .IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
-
-            lblRights.Text = isAdmin ? "Administrator" : "User";
-            lblRights.ForeColor = isAdmin ? Color.Green : Color.Red;
+            UpdateScriptsGrid();
         }
 
-        private void tbMonitoringRAM_TextChanged(object sender, EventArgs e)
+        private void ExecuteScript(ScriptItem script)
         {
+            Task.Run(() =>
+            {
+                try
+                {
+                    switch (script.Name)
+                    {
+                        case "CleanTemp":
+                            var tempPath = Path.GetTempPath();
+                            Invoke(new Action(() =>
+                                _logger.Info($"Очистка {tempPath}...")));
 
+                            var files = Directory.GetFiles(tempPath, "*.*");
+                            int deleted = 0;
+                            foreach (var file in files)
+                            {
+                                try
+                                {
+                                    File.Delete(file);
+                                    deleted++;
+                                }
+                                catch { }
+                            }
+
+                            Invoke(new Action(() =>
+                                _logger.Success($"Удалено файлов: {deleted}")));
+                            break;
+
+                        case "RestartService":
+                            Invoke(new Action(() =>
+                                _logger.Info("Перезапуск службы...")));
+                            // TODO: Открыть диалог выбора службы
+                            break;
+
+                        case "Backup":
+                            Invoke(new Action(() =>
+                                _logger.Info("Запуск резервного копирования...")));
+                            // TODO: Вызвать ShowBackupDialog()
+                            break;
+                    }
+
+                    Invoke(new Action(() =>
+                    {
+                        script.IsRunning = false;
+                        script.Status = "Stopped";
+                        UpdateScriptsGrid();
+                    }));
+                }
+                catch (Exception ex)
+                {
+                    Invoke(new Action(() =>
+                        _logger.Error($"Ошибка выполнения скрипта: {ex.Message}")));
+                }
+            });
         }
 
-        private void label5_Click(object sender, EventArgs e)
+        private void BtnAddScript_Click(object sender, EventArgs e)
         {
-
+            // TODO: Открыть диалог добавления нового скрипта
+            _logger.Info("Открытие диалога добавления скрипта...");
         }
 
-        private void btnAdminRights_Click(object sender, EventArgs e)
+        private void BtnBackupScript_Click(object sender, EventArgs e)
         {
-            RestartAsAdmin();
+            ShowBackupDialog();
         }
 
-        private void tabPage1_Click(object sender, EventArgs e)
+        private void ShowBackupDialog()
         {
+            using (var folderBrowser = new FolderBrowserDialog())
+            {
+                folderBrowser.Description = "Выберите папку для резервного копирования";
+                folderBrowser.ShowNewFolderButton = true;
 
+                if (folderBrowser.ShowDialog() == DialogResult.OK)
+                {
+                    using (var sourceBrowser = new FolderBrowserDialog())
+                    {
+                        sourceBrowser.Description = "Выберите папку для бекапа";
+
+                        if (sourceBrowser.ShowDialog() == DialogResult.OK)
+                        {
+                            _logger.Success($"Бекап: {sourceBrowser.SelectedPath} → {folderBrowser.SelectedPath}");
+                            // TODO: Реализовать логику бекапа
+                            PerformBackup(sourceBrowser.SelectedPath, folderBrowser.SelectedPath);
+                        }
+                    }
+                }
+            }
         }
 
-        private void tabPage2_Click(object sender, EventArgs e)
+        private void PerformBackup(string sourcePath, string destinationPath)
         {
+            Task.Run(() =>
+            {
+                try
+                {
+                    string backupName = $"Backup_{DateTime.Now:yyyyMMdd_HHmmss}";
+                    string backupPath = Path.Combine(destinationPath, backupName);
 
+                    _logger.Info($"Начало копирования...");
+                    Directory.CreateDirectory(backupPath);
+
+                    // Копирование файлов (упрощенно)
+                    var files = Directory.GetFiles(sourcePath, "*.*", SearchOption.AllDirectories);
+                    int total = files.Length;
+                    int current = 0;
+
+                    foreach (var file in files)
+                    {
+                        string relativePath = file.Substring(sourcePath.Length).TrimStart('\\');
+                        string destFile = Path.Combine(backupPath, relativePath);
+
+                        Directory.CreateDirectory(Path.GetDirectoryName(destFile));
+                        File.Copy(file, destFile, true);
+
+                        current++;
+                        if (current % 10 == 0)
+                        {
+                            Invoke(new Action(() =>
+                                _logger.Info($"Прогресс: {current}/{total} файлов")));
+                        }
+                    }
+
+                    Invoke(new Action(() =>
+                        _logger.Success($"Бекап завершен: {backupPath}")));
+                }
+                catch (Exception ex)
+                {
+                    Invoke(new Action(() =>
+                        _logger.Error($"Ошибка бекапа: {ex.Message}")));
+                }
+            });
         }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            StopMonitoring();
+            _monitoringService?.Dispose();
+            base.OnFormClosing(e);
+        }
+    }
+
+    // Модель скрипта
+    public class ScriptItem
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public string Status { get; set; }
+        public string Type { get; set; }
+        public bool IsRunning { get; set; }
     }
 }
