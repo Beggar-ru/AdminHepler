@@ -9,6 +9,7 @@ using System.Security.Principal;
 using System.ServiceProcess;
 using System.Text;
 using System.Windows.Forms;
+using static AdminHelper.Scripts.SystemTools;
 
 namespace AdminHelper
 {
@@ -474,53 +475,181 @@ namespace AdminHelper
 
         private void UpdateMonitoringDisplay(SystemInfo info)
         {
-            var cpuText = new StringBuilder();
-            cpuText.AppendLine($"Загрузка:    {info.CpuLoad:F1}%");
-            cpuText.AppendLine($"Температура: {info.CpuTemperature:F1}°C");
-            cpuText.AppendLine($"Частота:     {info.CpuFrequency:F2} GHz");
-            if (info.CpuPower > 0)
-                cpuText.AppendLine($"Потребление: {info.CpuPower:F1} W");
-            tbMonitorCPU.Text = cpuText.ToString();
-            ColorizeTextBox(tbMonitorCPU, info.CpuLoad);
+            // ── CPU ──────────────────────────────────────────────────────
+            var cpu = info.Cpu;
+            var sb = new StringBuilder();
 
-            var gpuText = new StringBuilder();
-            gpuText.AppendLine($"Загрузка:    {info.GpuLoad:F1}%");
-            gpuText.AppendLine($"Температура: {info.GpuTemperature:F1}°C");
-            if (info.GpuMemoryTotal > 0)
-                gpuText.AppendLine($"VRAM: {info.GpuMemoryUsed:F0} / {info.GpuMemoryTotal:F0} MB");
-            if (info.GpuFrequency > 0)
-                gpuText.AppendLine($"Частота:     {info.GpuFrequency:F0} MHz");
-            if (info.GpuFanSpeed > 0)
-                gpuText.AppendLine($"Вентилятор:  {info.GpuFanSpeed:F0} RPM");
-            tbMonitoringGPU.Text = gpuText.ToString();
+            sb.AppendLine($"{'─',0}{'─',0} {cpu.Name} {'─',0}".PadRight(36, '─'));
+            sb.AppendLine($"Ядра:        {cpu.PhysicalCores}P / {cpu.LogicalCores}L");
+            sb.AppendLine($"Загрузка:    {cpu.TotalLoad:F1}%");
+            sb.AppendLine($"Температура: {cpu.Temperature:F1}°C");
+            sb.AppendLine($"Частота:     {cpu.AverageFrequencyGHz:F2} GHz (ср.)");
+            if (cpu.PackagePower > 0)
+                sb.AppendLine($"Мощность:    {cpu.PackagePower:F1} W (Package)");
+            if (cpu.CoresPower > 0)
+                sb.AppendLine($"             {cpu.CoresPower:F1} W (Cores)");
+            if (cpu.VCore > 0)
+                sb.AppendLine($"VCore:       {cpu.VCore:F3} V");
+
+            // Частоты по ядрам (если есть)
+            if (cpu.CoreClocks.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("Ядра (частота / нагрузка / темп):");
+                int count = cpu.CoreClocks.Count;
+                for (int i = 0; i < count; i++)
+                {
+                    double mhz = cpu.CoreClocks[i].FrequencyMHz;
+                    double load = i < cpu.CoreLoads.Count ? cpu.CoreLoads[i] : 0;
+                    double temp = i < cpu.CoreTemperatures.Count ? cpu.CoreTemperatures[i] : 0;
+                    string core = $"Core #{i}";
+                    sb.AppendLine($"  {core,-8} {mhz,7:F0} MHz  {load,5:F1}%  {temp,4:F1}°C");
+                }
+            }
+
+            tbMonitorCPU.Text = sb.ToString();
+            ColorizeTextBox(tbMonitorCPU, cpu.TotalLoad);
+
+            // ── GPU ──────────────────────────────────────────────────────
+            sb.Clear();
+            if (info.Gpus.Count == 0)
+            {
+                sb.AppendLine("GPU не обнаружен");
+            }
+            else
+            {
+                foreach (var gpu in info.Gpus)
+                {
+                    sb.AppendLine($"{'─',0} {gpu.Name} {'─',0}".PadRight(36, '─'));
+                    sb.AppendLine($"Тип:         {gpu.Vendor} {gpu.GpuType}");
+                    if (!string.IsNullOrEmpty(gpu.DriverVersion))
+                        sb.AppendLine($"Драйвер:     {gpu.DriverVersion}");
+
+                    sb.AppendLine($"Загрузка:    {gpu.CoreLoad:F1}%");
+                    if (gpu.MemoryLoad > 0)
+                        sb.AppendLine($"VRAM Load:   {gpu.MemoryLoad:F1}%");
+                    if (gpu.VideoEngineLoad > 0)
+                        sb.AppendLine($"Video Engine:{gpu.VideoEngineLoad:F1}%");
+
+                    sb.AppendLine($"Температура: {gpu.Temperature:F1}°C");
+                    if (gpu.HotSpotTemperature > 0)
+                        sb.AppendLine($"Hot Spot:    {gpu.HotSpotTemperature:F1}°C");
+                    if (gpu.MemoryTemperature > 0)
+                        sb.AppendLine($"VRAM Temp:   {gpu.MemoryTemperature:F1}°C");
+
+                    if (gpu.MemoryTotalMB > 0)
+                        sb.AppendLine($"VRAM:        {gpu.MemoryUsedMB:F0} / {gpu.MemoryTotalMB:F0} MB");
+
+                    if (gpu.CoreFrequencyMHz > 0)
+                        sb.AppendLine($"Частота GPU: {gpu.CoreFrequencyMHz:F0} MHz");
+                    if (gpu.MemoryFrequencyMHz > 0)
+                        sb.AppendLine($"Частота VRAM:{gpu.MemoryFrequencyMHz:F0} MHz");
+
+                    // Несколько вентиляторов
+                    if (gpu.FanSpeeds.Count == 1)
+                    {
+                        sb.AppendLine($"Вентилятор:  {gpu.FanSpeeds[0]:F0} RPM");
+                        if (gpu.FanSpeedPercent > 0)
+                            sb.Append($" ({gpu.FanSpeedPercent:F0}%)");
+                    }
+                    else if (gpu.FanSpeeds.Count > 1)
+                    {
+                        for (int i = 0; i < gpu.FanSpeeds.Count; i++)
+                            sb.AppendLine($"Fan #{i + 1}:      {gpu.FanSpeeds[i]:F0} RPM");
+                    }
+
+                    if (gpu.PowerWatts > 0)
+                        sb.AppendLine($"Мощность:    {gpu.PowerWatts:F1} W");
+                    if (gpu.CoreVoltage > 0)
+                        sb.AppendLine($"GPU Voltage: {gpu.CoreVoltage:F3} V");
+
+                    sb.AppendLine();
+                }
+            }
+            tbMonitoringGPU.Text = sb.ToString();
             ColorizeTextBox(tbMonitoringGPU, info.GpuLoad);
 
-            var ramText = new StringBuilder();
-            ramText.AppendLine($"Использовано: {info.RamUsed:F1} / {info.RamTotal:F1} GB");
-            ramText.AppendLine($"Загрузка:     {info.RamLoad:F1}%");
-            tbMonitoringRAM.Text = ramText.ToString();
-            ColorizeTextBox(tbMonitoringRAM, info.RamLoad);
+            // ── RAM ───────────────────────────────────────────────────────
+            var ram = info.Ram;
+            sb.Clear();
+            sb.AppendLine($"Тип:          {ram.MemoryType}  {ram.FrequencyMHz:F0} MHz");
+            sb.AppendLine($"Использовано: {ram.UsedGB:F2} / {ram.TotalGB:F2} GB");
+            sb.AppendLine($"Загрузка:     {ram.LoadPercent:F1}%");
+            sb.AppendLine($"Свободно:     {ram.FreeGB:F2} GB");
 
-            var diskText = new StringBuilder();
+            if (!string.IsNullOrEmpty(ram.TimingsString))
+                sb.AppendLine($"Тайминги:     {ram.TimingsString}");
+
+            if (ram.Modules.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("Модули:");
+                foreach (var m in ram.Modules)
+                {
+                    sb.AppendLine($"  [{m.Slot}]");
+                    if (!string.IsNullOrEmpty(m.Manufacturer))
+                        sb.AppendLine($"    {m.Manufacturer} {m.PartNumber}");
+                    sb.AppendLine($"    {m.CapacityGB:F0} GB  {m.SpeedMHz:F0} MHz  {m.FormFactor}");
+                    if (m.VoltageV > 0)
+                        sb.AppendLine($"    {m.VoltageV:F2} V");
+                }
+            }
+            tbMonitoringRAM.Text = sb.ToString();
+            ColorizeTextBox(tbMonitoringRAM, ram.LoadPercent);
+
+            // ── ДИСКИ ─────────────────────────────────────────────────────
+            sb.Clear();
             if (info.Disks?.Count > 0)
             {
                 foreach (var disk in info.Disks)
                 {
-                    diskText.AppendLine($"[{disk.Name}] {disk.Model}");
-                    diskText.AppendLine($"Тип:      {disk.Type}");
-                    diskText.AppendLine($"Всего:    {disk.TotalSize:F0} GB");
-                    diskText.AppendLine($"Свободно: {disk.FreeSpace:F0} GB");
-                    diskText.AppendLine($"Занято:   {disk.UsagePercent:F1}%");
+                    sb.AppendLine($"[{disk.Name}] {disk.Model}");
+                    sb.AppendLine($"  Тип:      {disk.Type}  ({disk.BusType})  {disk.FileSystem}");
+                    sb.AppendLine($"  Размер:   {disk.TotalSizeGB:F1} GB");
+                    sb.AppendLine($"  Занято:   {disk.UsedSpaceGB:F1} GB  ({disk.UsagePercent:F1}%)");
+                    sb.AppendLine($"  Свободно: {disk.FreeSpaceGB:F1} GB");
+
                     if (disk.Temperature > 0)
-                        diskText.AppendLine($"Темп.:    {disk.Temperature:F1}°C");
-                    diskText.AppendLine(new string('─', 22));
+                        sb.AppendLine($"  Темп.:    {disk.Temperature:F1}°C");
+                    if (disk.HealthPercent >= 0)
+                        sb.AppendLine($"  Здоровье: {disk.HealthPercent}%");
+                    if (disk.PowerOnHours > 0)
+                        sb.AppendLine($"  Наработка:{disk.PowerOnHours} ч  ({disk.PowerOnHours / 24 / 30} мес.)");
+                    if (disk.PowerCycles > 0)
+                        sb.AppendLine($"  Вкл/выкл: {disk.PowerCycles}");
+                    if (disk.TotalReadsGB > 0 || disk.TotalWritesGB > 0)
+                        sb.AppendLine($"  R/W Total:{disk.TotalReadsGB} / {disk.TotalWritesGB} GB");
+                    if (disk.ReadSpeedMBs > 0 || disk.WriteSpeedMBs > 0)
+                        sb.AppendLine($"  Скорость: R {disk.ReadSpeedMBs:F1} MB/s  W {disk.WriteSpeedMBs:F1} MB/s");
+                    if (disk.ActiveTimePercent > 0)
+                        sb.AppendLine($"  Занятость:{disk.ActiveTimePercent:F1}%");
+
+                    sb.AppendLine(new string('─', 28));
                 }
             }
             else
             {
-                diskText.AppendLine("Диски не обнаружены");
+                sb.AppendLine("Диски не обнаружены");
             }
-            tbMonitoringHDD.Text = diskText.ToString();
+            tbMonitoringHDD.Text = sb.ToString();
+
+            // ── МАТЕРИНСКАЯ ПЛАТА (если есть отдельный TextBox) ──────────
+            // Если есть tbMonitoringMB — раскомментировать и добавить TextBox в форму
+            /*
+            var mb = info.Motherboard;
+            sb.Clear();
+            sb.AppendLine($"{mb.Manufacturer} {mb.Product}");
+            sb.AppendLine($"BIOS: {mb.BiosVersion}  ({mb.BiosDate})");
+
+            if (mb.Sensors.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("Датчики платы:");
+                foreach (var s in mb.Sensors.OrderBy(x => x.Type).ThenBy(x => x.Name))
+                    sb.AppendLine($"  {s.Name,-22} {s.Value,7:F2} {s.Unit}");
+            }
+            tbMonitoringMB.Text = sb.ToString();
+            */
         }
 
         private void ColorizeTextBox(TextBox textBox, double percentage)
@@ -937,13 +1066,5 @@ namespace AdminHelper
     }
 
     // BugFix: ScriptItem вынесен в отдельный файл Models, но для совместимости оставлен здесь
-    public class ScriptItem
-    {
-        public int Id { get; set; }
-        public string Name { get; set; } = "";
-        public string Description { get; set; } = "";
-        public string Status { get; set; } = "Stopped";
-        public string Type { get; set; } = "Built-in";
-        public bool IsRunning { get; set; }
-    }
+    
 }

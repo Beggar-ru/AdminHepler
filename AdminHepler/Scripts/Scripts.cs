@@ -125,6 +125,15 @@ namespace AdminHelper.Scripts
                 return false;
             }
         }
+        public class ScriptItem
+        {
+            public int Id { get; set; }
+            public string Name { get; set; } = "";
+            public string Description { get; set; } = "";
+            public string Status { get; set; } = "Stopped";
+            public string Type { get; set; } = "Built-in";
+            public bool IsRunning { get; set; }
+        }
 
         /// <summary>
         /// УДАЛЕНА ЛОЖНАЯ ЛОГИКА из оригинала:
