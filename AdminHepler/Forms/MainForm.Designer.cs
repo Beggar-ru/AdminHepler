@@ -32,12 +32,14 @@
             tabPageMonitoring = new TabPage();
             gbCPU = new GroupBox();
             tbMonitorCPU = new TextBox();
-            gbRAM = new GroupBox();
-            tbMonitoringRAM = new TextBox();
             gbGPU = new GroupBox();
             tbMonitoringGPU = new TextBox();
+            gbRAM = new GroupBox();
+            tbMonitoringRAM = new TextBox();
             gbDisk = new GroupBox();
             tbMonitoringHDD = new TextBox();
+            gbMotherboard = new GroupBox();
+            tbMonitoringMB = new TextBox();
             btnStopMonitoring = new Button();
             btnStartMonitoring = new Button();
             tabPageInfoProccess = new TabPage();
@@ -75,6 +77,7 @@
             gbRAM.SuspendLayout();
             gbGPU.SuspendLayout();
             gbDisk.SuspendLayout();
+            gbMotherboard.SuspendLayout();
             tabPageInfoProccess.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dataGridViewProcesses).BeginInit();
             tabPageInfoService.SuspendLayout();
@@ -92,16 +95,16 @@
             rtbLogger.BorderStyle = BorderStyle.FixedSingle;
             rtbLogger.Font = new Font("Lucida Console", 9.75F, FontStyle.Regular, GraphicsUnit.Point, 204);
             rtbLogger.ForeColor = Color.LightGreen;
-            rtbLogger.Location = new Point(12, 511);
+            rtbLogger.Location = new Point(12, 518);
             rtbLogger.Name = "rtbLogger";
             rtbLogger.ReadOnly = true;
-            rtbLogger.Size = new Size(1060, 131);
+            rtbLogger.Size = new Size(1060, 199);
             rtbLogger.TabIndex = 0;
             rtbLogger.Text = "";
             // 
             // btnSaveLog
             // 
-            btnSaveLog.Location = new Point(997, 648);
+            btnSaveLog.Location = new Point(997, 723);
             btnSaveLog.Name = "btnSaveLog";
             btnSaveLog.Size = new Size(75, 26);
             btnSaveLog.TabIndex = 1;
@@ -111,7 +114,7 @@
             // 
             // btnClearLog
             // 
-            btnClearLog.Location = new Point(836, 648);
+            btnClearLog.Location = new Point(836, 723);
             btnClearLog.Name = "btnClearLog";
             btnClearLog.Size = new Size(75, 26);
             btnClearLog.TabIndex = 2;
@@ -121,7 +124,7 @@
             // 
             // btnCopyLog
             // 
-            btnCopyLog.Location = new Point(917, 648);
+            btnCopyLog.Location = new Point(917, 723);
             btnCopyLog.Name = "btnCopyLog";
             btnCopyLog.Size = new Size(75, 26);
             btnCopyLog.TabIndex = 3;
@@ -133,7 +136,7 @@
             // 
             btnAdminRights.BackColor = Color.SteelBlue;
             btnAdminRights.ForeColor = Color.White;
-            btnAdminRights.Location = new Point(12, 648);
+            btnAdminRights.Location = new Point(12, 723);
             btnAdminRights.Name = "btnAdminRights";
             btnAdminRights.Size = new Size(120, 26);
             btnAdminRights.TabIndex = 8;
@@ -145,7 +148,7 @@
             // 
             label6.AutoSize = true;
             label6.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            label6.Location = new Point(12, 16);
+            label6.Location = new Point(140, 729);
             label6.Name = "label6";
             label6.Size = new Size(45, 15);
             label6.TabIndex = 9;
@@ -156,7 +159,7 @@
             lblRights.AutoSize = true;
             lblRights.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
             lblRights.ForeColor = Color.Gray;
-            lblRights.Location = new Point(65, 16);
+            lblRights.Location = new Point(190, 729);
             lblRights.Name = "lblRights";
             lblRights.Size = new Size(67, 15);
             lblRights.TabIndex = 10;
@@ -169,24 +172,25 @@
             tabControl.Controls.Add(tabPageInfoService);
             tabControl.Controls.Add(tabPageScript);
             tabControl.Font = new Font("Segoe UI", 9F);
-            tabControl.Location = new Point(12, 41);
+            tabControl.Location = new Point(12, 12);
             tabControl.Name = "tabControl";
             tabControl.SelectedIndex = 0;
-            tabControl.Size = new Size(1060, 464);
+            tabControl.Size = new Size(1060, 500);
             tabControl.TabIndex = 11;
             // 
             // tabPageMonitoring
             // 
             tabPageMonitoring.Controls.Add(gbCPU);
-            tabPageMonitoring.Controls.Add(gbRAM);
             tabPageMonitoring.Controls.Add(gbGPU);
+            tabPageMonitoring.Controls.Add(gbRAM);
             tabPageMonitoring.Controls.Add(gbDisk);
+            tabPageMonitoring.Controls.Add(gbMotherboard);
             tabPageMonitoring.Controls.Add(btnStopMonitoring);
             tabPageMonitoring.Controls.Add(btnStartMonitoring);
             tabPageMonitoring.Location = new Point(4, 24);
             tabPageMonitoring.Name = "tabPageMonitoring";
             tabPageMonitoring.Padding = new Padding(3);
-            tabPageMonitoring.Size = new Size(1052, 436);
+            tabPageMonitoring.Size = new Size(1052, 472);
             tabPageMonitoring.TabIndex = 0;
             tabPageMonitoring.Text = "📊 Monitoring";
             tabPageMonitoring.UseVisualStyleBackColor = true;
@@ -196,7 +200,7 @@
             gbCPU.Controls.Add(tbMonitorCPU);
             gbCPU.Location = new Point(6, 6);
             gbCPU.Name = "gbCPU";
-            gbCPU.Size = new Size(230, 400);
+            gbCPU.Size = new Size(204, 422);
             gbCPU.TabIndex = 0;
             gbCPU.TabStop = false;
             gbCPU.Text = "⚙ CPU";
@@ -205,46 +209,22 @@
             // 
             tbMonitorCPU.BackColor = Color.FromArgb(240, 240, 240);
             tbMonitorCPU.Dock = DockStyle.Fill;
-            tbMonitorCPU.Font = new Font("Consolas", 9.5F);
+            tbMonitorCPU.Font = new Font("Consolas", 9F);
             tbMonitorCPU.Location = new Point(3, 19);
             tbMonitorCPU.Multiline = true;
             tbMonitorCPU.Name = "tbMonitorCPU";
             tbMonitorCPU.ReadOnly = true;
             tbMonitorCPU.ScrollBars = ScrollBars.Vertical;
-            tbMonitorCPU.Size = new Size(224, 378);
+            tbMonitorCPU.Size = new Size(198, 400);
             tbMonitorCPU.TabIndex = 0;
             tbMonitorCPU.Text = "— Мониторинг не запущен —";
-            // 
-            // gbRAM
-            // 
-            gbRAM.Controls.Add(tbMonitoringRAM);
-            gbRAM.Location = new Point(478, 6);
-            gbRAM.Name = "gbRAM";
-            gbRAM.Size = new Size(230, 400);
-            gbRAM.TabIndex = 1;
-            gbRAM.TabStop = false;
-            gbRAM.Text = "\U0001f9e0 RAM";
-            // 
-            // tbMonitoringRAM
-            // 
-            tbMonitoringRAM.BackColor = Color.FromArgb(240, 240, 240);
-            tbMonitoringRAM.Dock = DockStyle.Fill;
-            tbMonitoringRAM.Font = new Font("Consolas", 9.5F);
-            tbMonitoringRAM.Location = new Point(3, 19);
-            tbMonitoringRAM.Multiline = true;
-            tbMonitoringRAM.Name = "tbMonitoringRAM";
-            tbMonitoringRAM.ReadOnly = true;
-            tbMonitoringRAM.ScrollBars = ScrollBars.Vertical;
-            tbMonitoringRAM.Size = new Size(224, 378);
-            tbMonitoringRAM.TabIndex = 1;
-            tbMonitoringRAM.Text = "— Мониторинг не запущен —";
             // 
             // gbGPU
             // 
             gbGPU.Controls.Add(tbMonitoringGPU);
-            gbGPU.Location = new Point(242, 6);
+            gbGPU.Location = new Point(215, 6);
             gbGPU.Name = "gbGPU";
-            gbGPU.Size = new Size(230, 400);
+            gbGPU.Size = new Size(204, 422);
             gbGPU.TabIndex = 2;
             gbGPU.TabStop = false;
             gbGPU.Text = "🎮 GPU";
@@ -253,22 +233,46 @@
             // 
             tbMonitoringGPU.BackColor = Color.FromArgb(240, 240, 240);
             tbMonitoringGPU.Dock = DockStyle.Fill;
-            tbMonitoringGPU.Font = new Font("Consolas", 9.5F);
+            tbMonitoringGPU.Font = new Font("Consolas", 9F);
             tbMonitoringGPU.Location = new Point(3, 19);
             tbMonitoringGPU.Multiline = true;
             tbMonitoringGPU.Name = "tbMonitoringGPU";
             tbMonitoringGPU.ReadOnly = true;
             tbMonitoringGPU.ScrollBars = ScrollBars.Vertical;
-            tbMonitoringGPU.Size = new Size(224, 378);
+            tbMonitoringGPU.Size = new Size(198, 400);
             tbMonitoringGPU.TabIndex = 2;
             tbMonitoringGPU.Text = "— Мониторинг не запущен —";
+            // 
+            // gbRAM
+            // 
+            gbRAM.Controls.Add(tbMonitoringRAM);
+            gbRAM.Location = new Point(424, 6);
+            gbRAM.Name = "gbRAM";
+            gbRAM.Size = new Size(204, 422);
+            gbRAM.TabIndex = 1;
+            gbRAM.TabStop = false;
+            gbRAM.Text = "🧠 RAM";
+            // 
+            // tbMonitoringRAM
+            // 
+            tbMonitoringRAM.BackColor = Color.FromArgb(240, 240, 240);
+            tbMonitoringRAM.Dock = DockStyle.Fill;
+            tbMonitoringRAM.Font = new Font("Consolas", 9F);
+            tbMonitoringRAM.Location = new Point(3, 19);
+            tbMonitoringRAM.Multiline = true;
+            tbMonitoringRAM.Name = "tbMonitoringRAM";
+            tbMonitoringRAM.ReadOnly = true;
+            tbMonitoringRAM.ScrollBars = ScrollBars.Vertical;
+            tbMonitoringRAM.Size = new Size(198, 400);
+            tbMonitoringRAM.TabIndex = 1;
+            tbMonitoringRAM.Text = "— Мониторинг не запущен —";
             // 
             // gbDisk
             // 
             gbDisk.Controls.Add(tbMonitoringHDD);
-            gbDisk.Location = new Point(714, 6);
+            gbDisk.Location = new Point(633, 6);
             gbDisk.Name = "gbDisk";
-            gbDisk.Size = new Size(230, 400);
+            gbDisk.Size = new Size(204, 422);
             gbDisk.TabIndex = 3;
             gbDisk.TabStop = false;
             gbDisk.Text = "💾 Disk";
@@ -277,15 +281,39 @@
             // 
             tbMonitoringHDD.BackColor = Color.FromArgb(240, 240, 240);
             tbMonitoringHDD.Dock = DockStyle.Fill;
-            tbMonitoringHDD.Font = new Font("Consolas", 9.5F);
+            tbMonitoringHDD.Font = new Font("Consolas", 9F);
             tbMonitoringHDD.Location = new Point(3, 19);
             tbMonitoringHDD.Multiline = true;
             tbMonitoringHDD.Name = "tbMonitoringHDD";
             tbMonitoringHDD.ReadOnly = true;
             tbMonitoringHDD.ScrollBars = ScrollBars.Vertical;
-            tbMonitoringHDD.Size = new Size(224, 378);
+            tbMonitoringHDD.Size = new Size(198, 400);
             tbMonitoringHDD.TabIndex = 3;
             tbMonitoringHDD.Text = "— Мониторинг не запущен —";
+            // 
+            // gbMotherboard
+            // 
+            gbMotherboard.Controls.Add(tbMonitoringMB);
+            gbMotherboard.Location = new Point(842, 6);
+            gbMotherboard.Name = "gbMotherboard";
+            gbMotherboard.Size = new Size(204, 422);
+            gbMotherboard.TabIndex = 6;
+            gbMotherboard.TabStop = false;
+            gbMotherboard.Text = "🖥 MB && Net";
+            // 
+            // tbMonitoringMB
+            // 
+            tbMonitoringMB.BackColor = Color.FromArgb(240, 240, 240);
+            tbMonitoringMB.Dock = DockStyle.Fill;
+            tbMonitoringMB.Font = new Font("Consolas", 9F);
+            tbMonitoringMB.Location = new Point(3, 19);
+            tbMonitoringMB.Multiline = true;
+            tbMonitoringMB.Name = "tbMonitoringMB";
+            tbMonitoringMB.ReadOnly = true;
+            tbMonitoringMB.ScrollBars = ScrollBars.Vertical;
+            tbMonitoringMB.Size = new Size(198, 400);
+            tbMonitoringMB.TabIndex = 0;
+            tbMonitoringMB.Text = "— Мониторинг не запущен —";
             // 
             // btnStopMonitoring
             // 
@@ -293,7 +321,7 @@
             btnStopMonitoring.Enabled = false;
             btnStopMonitoring.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
             btnStopMonitoring.ForeColor = Color.White;
-            btnStopMonitoring.Location = new Point(950, 336);
+            btnStopMonitoring.Location = new Point(849, 434);
             btnStopMonitoring.Name = "btnStopMonitoring";
             btnStopMonitoring.Size = new Size(96, 32);
             btnStopMonitoring.TabIndex = 4;
@@ -306,7 +334,7 @@
             btnStartMonitoring.BackColor = Color.SeaGreen;
             btnStartMonitoring.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
             btnStartMonitoring.ForeColor = Color.White;
-            btnStartMonitoring.Location = new Point(950, 371);
+            btnStartMonitoring.Location = new Point(950, 434);
             btnStartMonitoring.Name = "btnStartMonitoring";
             btnStartMonitoring.Size = new Size(96, 32);
             btnStartMonitoring.TabIndex = 5;
@@ -320,7 +348,7 @@
             tabPageInfoProccess.Location = new Point(4, 24);
             tabPageInfoProccess.Name = "tabPageInfoProccess";
             tabPageInfoProccess.Padding = new Padding(3);
-            tabPageInfoProccess.Size = new Size(1052, 436);
+            tabPageInfoProccess.Size = new Size(1052, 472);
             tabPageInfoProccess.TabIndex = 1;
             tabPageInfoProccess.Text = "⚙ Processes";
             tabPageInfoProccess.UseVisualStyleBackColor = true;
@@ -349,7 +377,7 @@
             dataGridViewProcesses.ReadOnly = true;
             dataGridViewProcesses.RowHeadersVisible = false;
             dataGridViewProcesses.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dataGridViewProcesses.Size = new Size(1046, 430);
+            dataGridViewProcesses.Size = new Size(1046, 466);
             dataGridViewProcesses.TabIndex = 0;
             // 
             // colProcessName
@@ -393,7 +421,7 @@
             tabPageInfoService.Location = new Point(4, 24);
             tabPageInfoService.Name = "tabPageInfoService";
             tabPageInfoService.Padding = new Padding(3);
-            tabPageInfoService.Size = new Size(1052, 436);
+            tabPageInfoService.Size = new Size(1052, 472);
             tabPageInfoService.TabIndex = 2;
             tabPageInfoService.Text = "🔧 Services";
             tabPageInfoService.UseVisualStyleBackColor = true;
@@ -422,7 +450,7 @@
             dataGridViewServices.ReadOnly = true;
             dataGridViewServices.RowHeadersVisible = false;
             dataGridViewServices.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dataGridViewServices.Size = new Size(1046, 430);
+            dataGridViewServices.Size = new Size(1046, 466);
             dataGridViewServices.TabIndex = 0;
             // 
             // colServiceName
@@ -460,7 +488,7 @@
             tabPageScript.Location = new Point(4, 24);
             tabPageScript.Name = "tabPageScript";
             tabPageScript.Padding = new Padding(3);
-            tabPageScript.Size = new Size(1052, 436);
+            tabPageScript.Size = new Size(1052, 472);
             tabPageScript.TabIndex = 3;
             tabPageScript.Text = "📜 Scripts";
             tabPageScript.UseVisualStyleBackColor = true;
@@ -488,7 +516,7 @@
             dataGridViewScripts.ReadOnly = true;
             dataGridViewScripts.RowHeadersVisible = false;
             dataGridViewScripts.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dataGridViewScripts.Size = new Size(1046, 358);
+            dataGridViewScripts.Size = new Size(1046, 387);
             dataGridViewScripts.TabIndex = 0;
             dataGridViewScripts.CellContentClick += DataGridViewScripts_CellContentClick;
             // 
@@ -532,15 +560,15 @@
             pnlScriptBottom.Controls.Add(btnAddScript);
             pnlScriptBottom.Controls.Add(btnBackupScript);
             pnlScriptBottom.Controls.Add(gbShutdown);
-            pnlScriptBottom.Location = new Point(3, 364);
+            pnlScriptBottom.Location = new Point(3, 396);
             pnlScriptBottom.Name = "pnlScriptBottom";
-            pnlScriptBottom.Size = new Size(1046, 65);
+            pnlScriptBottom.Size = new Size(1046, 70);
             pnlScriptBottom.TabIndex = 1;
             // 
             // btnAddScript
             // 
             btnAddScript.Font = new Font("Segoe UI", 9F);
-            btnAddScript.Location = new Point(0, 10);
+            btnAddScript.Location = new Point(794, 19);
             btnAddScript.Name = "btnAddScript";
             btnAddScript.Size = new Size(110, 32);
             btnAddScript.TabIndex = 0;
@@ -551,7 +579,7 @@
             // btnBackupScript
             // 
             btnBackupScript.Font = new Font("Segoe UI", 9F);
-            btnBackupScript.Location = new Point(118, 10);
+            btnBackupScript.Location = new Point(912, 19);
             btnBackupScript.Name = "btnBackupScript";
             btnBackupScript.Size = new Size(130, 32);
             btnBackupScript.TabIndex = 1;
@@ -567,12 +595,12 @@
             gbShutdown.Controls.Add(btnCancelShutdown);
             gbShutdown.Controls.Add(lblShutdownStatus);
             gbShutdown.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            gbShutdown.Location = new Point(256, 0);
+            gbShutdown.Location = new Point(3, 3);
             gbShutdown.Name = "gbShutdown";
             gbShutdown.Size = new Size(636, 57);
             gbShutdown.TabIndex = 2;
             gbShutdown.TabStop = false;
-            gbShutdown.Text = "\u23fb Shutdown Control";
+            gbShutdown.Text = "⏻ Shutdown Control";
             // 
             // nudShutdownMinutes
             // 
@@ -605,7 +633,7 @@
             btnOffPc.Name = "btnOffPc";
             btnOffPc.Size = new Size(140, 34);
             btnOffPc.TabIndex = 1;
-            btnOffPc.Text = "\u23fb OFF PC (5 мин)";
+            btnOffPc.Text = "⏻ OFF PC (5 мин)";
             btnOffPc.UseVisualStyleBackColor = false;
             btnOffPc.Click += BtnOffPc_Click;
             // 
@@ -615,7 +643,7 @@
             btnCancelShutdown.Enabled = false;
             btnCancelShutdown.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
             btnCancelShutdown.ForeColor = Color.White;
-            btnCancelShutdown.Location = new Point(244, 18);
+            btnCancelShutdown.Location = new Point(242, 18);
             btnCancelShutdown.Name = "btnCancelShutdown";
             btnCancelShutdown.Size = new Size(110, 34);
             btnCancelShutdown.TabIndex = 2;
@@ -637,7 +665,7 @@
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1084, 686);
+            ClientSize = new Size(1084, 761);
             Controls.Add(tabControl);
             Controls.Add(lblRights);
             Controls.Add(label6);
@@ -663,6 +691,8 @@
             gbGPU.PerformLayout();
             gbDisk.ResumeLayout(false);
             gbDisk.PerformLayout();
+            gbMotherboard.ResumeLayout(false);
+            gbMotherboard.PerformLayout();
             tabPageInfoProccess.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)dataGridViewProcesses).EndInit();
             tabPageInfoService.ResumeLayout(false);
@@ -698,6 +728,8 @@
         private TextBox tbMonitoringGPU;
         private GroupBox gbDisk;
         private TextBox tbMonitoringHDD;
+        private GroupBox gbMotherboard;
+        private TextBox tbMonitoringMB;
         private Button btnStartMonitoring;
         private Button btnStopMonitoring;
 
@@ -711,7 +743,6 @@
         private DataGridViewTextBoxColumn colProcessType;
 
         // Вкладка Services
-        // BugFix: colServiceMemory убрана — в логике всегда 0, не несёт смысла
         private TabPage tabPageInfoService;
         private DataGridView dataGridViewServices;
         private DataGridViewTextBoxColumn colServiceName;

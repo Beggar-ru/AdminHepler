@@ -633,23 +633,61 @@ namespace AdminHelper
             }
             tbMonitoringHDD.Text = sb.ToString();
 
-            // ── МАТЕРИНСКАЯ ПЛАТА (если есть отдельный TextBox) ──────────
-            // Если есть tbMonitoringMB — раскомментировать и добавить TextBox в форму
-            /*
-            var mb = info.Motherboard;
+            // ── МАТЕРИНСКАЯ ПЛАТА И СЕТЬ ──────────────────────────────────
             sb.Clear();
-            sb.AppendLine($"{mb.Manufacturer} {mb.Product}");
-            sb.AppendLine($"BIOS: {mb.BiosVersion}  ({mb.BiosDate})");
-
-            if (mb.Sensors.Count > 0)
+            if (info.Motherboard != null)
             {
-                sb.AppendLine();
-                sb.AppendLine("Датчики платы:");
-                foreach (var s in mb.Sensors.OrderBy(x => x.Type).ThenBy(x => x.Name))
-                    sb.AppendLine($"  {s.Name,-22} {s.Value,7:F2} {s.Unit}");
+                var mb = info.Motherboard;
+                sb.AppendLine($"{mb.Manufacturer} {mb.Product}");
+                sb.AppendLine($"BIOS: {mb.BiosVersion}  ({mb.BiosDate})");
+
+                if (mb.Sensors?.Count > 0)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine("Датчики платы:");
+                    foreach (var s in mb.Sensors.OrderBy(x => x.Type).ThenBy(x => x.Name))
+                        sb.AppendLine($"  {s.Name,-18} {s.Value,7:F2} {s.Unit}");
+                }
             }
+            else
+            {
+                sb.AppendLine("Мат. плата не найдена");
+            }
+
+            sb.AppendLine();
+            sb.AppendLine("── СЕТЬ ────────────────────");
+            try
+            {
+                var interfaces = System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces();
+                bool hasNet = false;
+                foreach (var ni in interfaces)
+                {
+                    // Проверяем, что интерфейс поднят и не является Loopback (локальной петлей)
+                    if (ni.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up &&
+                        ni.NetworkInterfaceType != System.Net.NetworkInformation.NetworkInterfaceType.Loopback)
+                    {
+                        hasNet = true;
+                        sb.AppendLine($"[{ni.Name}]");
+
+                        var stats = ni.GetIPStatistics();
+                        double rxMB = stats.BytesReceived / 1048576.0;
+                        double txMB = stats.BytesSent / 1048576.0;
+
+                        sb.AppendLine($"  Принято:    {rxMB:F2} MB");
+                        sb.AppendLine($"  Отправлено: {txMB:F2} MB");
+                        sb.AppendLine();
+                    }
+                }
+
+                if (!hasNet)
+                    sb.AppendLine("Нет активных подключений");
+            }
+            catch
+            {
+                sb.AppendLine("Ошибка чтения сети");
+            }
+
             tbMonitoringMB.Text = sb.ToString();
-            */
         }
 
         private void ColorizeTextBox(TextBox textBox, double percentage)
