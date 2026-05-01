@@ -91,10 +91,10 @@
             rtbLogger.BorderStyle = BorderStyle.FixedSingle;
             rtbLogger.Font = new Font("Lucida Console", 9.75F, FontStyle.Regular, GraphicsUnit.Point, 204);
             rtbLogger.ForeColor = Color.LightGreen;
-            rtbLogger.Location = new Point(12, 486);
+            rtbLogger.Location = new Point(12, 511);
             rtbLogger.Name = "rtbLogger";
             rtbLogger.ReadOnly = true;
-            rtbLogger.Size = new Size(1060, 156);
+            rtbLogger.Size = new Size(1060, 131);
             rtbLogger.TabIndex = 0;
             rtbLogger.Text = "";
             // 
@@ -171,7 +171,7 @@
             tabControl.Location = new Point(12, 41);
             tabControl.Name = "tabControl";
             tabControl.SelectedIndex = 0;
-            tabControl.Size = new Size(1060, 439);
+            tabControl.Size = new Size(1060, 464);
             tabControl.TabIndex = 11;
             // 
             // tabPageMonitoring
@@ -185,7 +185,7 @@
             tabPageMonitoring.Location = new Point(4, 24);
             tabPageMonitoring.Name = "tabPageMonitoring";
             tabPageMonitoring.Padding = new Padding(3);
-            tabPageMonitoring.Size = new Size(1052, 411);
+            tabPageMonitoring.Size = new Size(1052, 436);
             tabPageMonitoring.TabIndex = 0;
             tabPageMonitoring.Text = "📊 Monitoring";
             tabPageMonitoring.UseVisualStyleBackColor = true;
@@ -319,7 +319,7 @@
             tabPageInfoProccess.Location = new Point(4, 24);
             tabPageInfoProccess.Name = "tabPageInfoProccess";
             tabPageInfoProccess.Padding = new Padding(3);
-            tabPageInfoProccess.Size = new Size(1052, 449);
+            tabPageInfoProccess.Size = new Size(1052, 436);
             tabPageInfoProccess.TabIndex = 1;
             tabPageInfoProccess.Text = "⚙ Processes";
             tabPageInfoProccess.UseVisualStyleBackColor = true;
@@ -348,7 +348,7 @@
             dataGridViewProcesses.ReadOnly = true;
             dataGridViewProcesses.RowHeadersVisible = false;
             dataGridViewProcesses.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dataGridViewProcesses.Size = new Size(1046, 443);
+            dataGridViewProcesses.Size = new Size(1046, 430);
             dataGridViewProcesses.TabIndex = 0;
             // 
             // colProcessName
@@ -392,7 +392,7 @@
             tabPageInfoService.Location = new Point(4, 24);
             tabPageInfoService.Name = "tabPageInfoService";
             tabPageInfoService.Padding = new Padding(3);
-            tabPageInfoService.Size = new Size(1052, 449);
+            tabPageInfoService.Size = new Size(1052, 436);
             tabPageInfoService.TabIndex = 2;
             tabPageInfoService.Text = "🔧 Services";
             tabPageInfoService.UseVisualStyleBackColor = true;
@@ -421,7 +421,7 @@
             dataGridViewServices.ReadOnly = true;
             dataGridViewServices.RowHeadersVisible = false;
             dataGridViewServices.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dataGridViewServices.Size = new Size(1046, 443);
+            dataGridViewServices.Size = new Size(1046, 430);
             dataGridViewServices.TabIndex = 0;
             // 
             // colServiceName
@@ -459,7 +459,7 @@
             tabPageScript.Location = new Point(4, 24);
             tabPageScript.Name = "tabPageScript";
             tabPageScript.Padding = new Padding(3);
-            tabPageScript.Size = new Size(1052, 449);
+            tabPageScript.Size = new Size(1052, 436);
             tabPageScript.TabIndex = 3;
             tabPageScript.Text = "📜 Scripts";
             tabPageScript.UseVisualStyleBackColor = true;
@@ -533,7 +533,7 @@
             pnlScriptBottom.Controls.Add(gbShutdown);
             pnlScriptBottom.Location = new Point(3, 364);
             pnlScriptBottom.Name = "pnlScriptBottom";
-            pnlScriptBottom.Size = new Size(1046, 82);
+            pnlScriptBottom.Size = new Size(1046, 65);
             pnlScriptBottom.TabIndex = 1;
             // 
             // btnAddScript
@@ -568,7 +568,7 @@
             gbShutdown.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
             gbShutdown.Location = new Point(256, 0);
             gbShutdown.Name = "gbShutdown";
-            gbShutdown.Size = new Size(420, 82);
+            gbShutdown.Size = new Size(636, 57);
             gbShutdown.TabIndex = 2;
             gbShutdown.TabStop = false;
             gbShutdown.Text = "\u23fb Shutdown Control";
@@ -626,7 +626,7 @@
             // 
             lblShutdownStatus.Font = new Font("Segoe UI", 8.5F);
             lblShutdownStatus.ForeColor = Color.SeaGreen;
-            lblShutdownStatus.Location = new Point(96, 56);
+            lblShutdownStatus.Location = new Point(360, 18);
             lblShutdownStatus.Name = "lblShutdownStatus";
             lblShutdownStatus.Size = new Size(260, 18);
             lblShutdownStatus.TabIndex = 3;
