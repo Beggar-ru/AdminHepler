@@ -1,6 +1,6 @@
-﻿using AdminHepler.Logger;
-using AdminHepler.Models;
-using AdminHepler.Utils;
+﻿using AdminHelper.Logger;
+using AdminHelper.Models;
+using AdminHelper.Utils;
 using LibreHardwareMonitor.Hardware;
 using System;
 using System.Collections.Generic;
@@ -11,7 +11,7 @@ using System.Management;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace AdminHepler.Services
+namespace AdminHelper.Services
 {
     // === БЛОК 1: ПОЛЯ КЛАССА ===
     // Источник: MonitoringServices.txt (строки 20-35)

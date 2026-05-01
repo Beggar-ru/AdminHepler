@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Security.Principal;
 
-namespace AdminHepler.Utils
+namespace AdminHelper.Utils
 {
     public static class IsAdminUtils
     {

@@ -1,4 +1,4 @@
-﻿namespace AdminHepler.Forms
+﻿namespace AdminHelper.Forms
 {
     partial class frmShutdownTimer
     {

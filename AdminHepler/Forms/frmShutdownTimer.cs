@@ -7,11 +7,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using AdminHepler.Scripts;
-using AdminHepler.Logger;
-using AdminHepler.Utils;
+using AdminHelper.Scripts;
+using AdminHelper.Logger;
+using AdminHelper.Utils;
 
-namespace AdminHepler.Forms
+namespace AdminHelper.Forms
 {
     public partial class frmShutdownTimer : Form
     {
@@ -50,7 +50,7 @@ namespace AdminHepler.Forms
         {
             if (int.TryParse(tbMinutsTimer.Text, out int minutes) && minutes > 0)
             {
-                var tools = new Scripts.SystemTools(_logger);
+                var tools = new SystemTools(_logger);
                 tools.ScheduleShutdown(minutes);
                 this.Close();
             }
