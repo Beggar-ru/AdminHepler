@@ -20,11 +20,10 @@ namespace AdminHelper
         private System.Windows.Forms.Timer _updateTimer;
         private bool _isMonitoring = false;
         private List<ScriptItem> _scripts;
-        private readonly SystemTools _systemTools;   // BugFix: readonly, создаётся один раз
+        private readonly SystemTools _systemTools;
         private bool _isShutdownScheduled = false;
         private System.Windows.Forms.Timer _shutdownCheckTimer;
 
-        // Таймер для отображения обратного отсчёта выключения
         private System.Windows.Forms.Timer _shutdownCountdownTimer;
         private DateTime _shutdownScheduledAt;
         private int _shutdownMinutes = 5;
@@ -138,20 +137,12 @@ namespace AdminHelper
 
         // ========== ВЫКЛЮЧЕНИЕ ПК ==========
 
-        /// <summary>
-        /// Проверяет наличие запланированного выключения через WMI (без side-effect).
-        /// Возвращает true если выключение запланировано.
-        /// </summary>
         private bool CheckShutdownViaWMI()
         {
             try
             {
-                // Ищем процесс shutdown.exe с аргументом /s или /r
                 var shutdownProcs = Process.GetProcessesByName("shutdown");
                 if (shutdownProcs.Length > 0) return true;
-
-                // Дополнительная проверка через реестр (PendingFileRenameOperations — не о выключении!)
-                // Убрана ложная проверка из оригинала — PendingFileRenameOperations не связан с таймером shutdown.
                 return false;
             }
             catch
@@ -160,15 +151,10 @@ namespace AdminHelper
             }
         }
 
-        /// <summary>
-        /// Обновляет состояние кнопок и флага выключения.
-        /// BugFix: не вызывает side-effect (не отменяет таймер при проверке).
-        /// </summary>
         private void RefreshShutdownState(bool logChange = true)
         {
             bool wasScheduled = _isShutdownScheduled;
 
-            // Используем WMI-метод без side-effect
             _isShutdownScheduled = CheckShutdownViaWMI();
 
             if (logChange && wasScheduled != _isShutdownScheduled)
@@ -254,7 +240,6 @@ namespace AdminHelper
 
         private void BtnOffPc_Click(object sender, EventArgs e)
         {
-            // BugFix: используем _systemTools, не создаём новый экземпляр
             var result = MessageBox.Show(
                 $"Запланировать выключение через {_shutdownMinutes} минут?",
                 "Подтверждение",
@@ -282,7 +267,7 @@ namespace AdminHelper
         private void nudShutdownMinutes_ValueChanged(object sender, EventArgs e)
         {
             _shutdownMinutes = (int)nudShutdownMinutes.Value;
-            btnOffPc.Text = $"⏻ OFF PC ({_shutdownMinutes} мин)";
+            btnOffPc.Text = $"OFF PC ({_shutdownMinutes} мин)";
         }
 
         // ========== МОНИТОРИНГ ==========
@@ -325,8 +310,6 @@ namespace AdminHelper
             _logger.Info("Мониторинг ресурсов остановлен");
         }
 
-        // BugFix: UpdateTimer_Tick обновляет Processes/Services только
-        // если соответствующая вкладка активна — экономит ресурсы.
         private async void UpdateTimer_Tick(object sender, EventArgs e)
         {
             int selectedTab = tabControl.SelectedIndex;
@@ -340,7 +323,6 @@ namespace AdminHelper
             });
         }
 
-        // BugFix: Загружаем данные при переключении на вкладку Processes/Services
         private async void TabControl_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (tabControl.SelectedTab == tabPageInfoProccess)
@@ -662,7 +644,7 @@ namespace AdminHelper
                 bool hasNet = false;
                 foreach (var ni in interfaces)
                 {
-                    // Проверяем, что интерфейс поднят и не является Loopback (локальной петлей)
+
                     if (ni.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up &&
                         ni.NetworkInterfaceType != System.Net.NetworkInformation.NetworkInterfaceType.Loopback)
                     {
@@ -1036,7 +1018,7 @@ namespace AdminHelper
         {
             // Блокируем кнопку на время бекапа
             btnBackupScript.Enabled = false;
-            btnBackupScript.Text = "⏳ Backup...";
+            btnBackupScript.Text = "Backup...";
 
             Task.Run(() =>
             {
@@ -1085,7 +1067,7 @@ namespace AdminHelper
                     Invoke(new Action(() =>
                     {
                         btnBackupScript.Enabled = true;
-                        btnBackupScript.Text = "📁 Backup Script";
+                        btnBackupScript.Text = "Backup Script";
                     }));
                 }
             });
@@ -1101,8 +1083,10 @@ namespace AdminHelper
             _monitoringService?.Dispose();
             base.OnFormClosing(e);
         }
-    }
 
-    // BugFix: ScriptItem вынесен в отдельный файл Models, но для совместимости оставлен здесь
-    
+        private void tbMonitorCPU_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+    }
 }
