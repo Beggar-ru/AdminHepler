@@ -32,9 +32,9 @@ namespace AdminHelper
         {
             InitializeComponent();
 
-            // 1. Сначала сервисы
+            // 1. Сначала сервисы — но MonitoringService инициализируется асинхронно (см. ниже)
             _logger = new LoggerService(rtbLogger);
-            _systemTools = new SystemTools(_logger);   // BugFix: единственный экземпляр
+            _systemTools = new SystemTools(_logger);
             _monitoringService = new MonitoringService(_logger);
             _monitoringService.DataUpdated += OnMonitoringDataUpdated;
 
@@ -42,7 +42,7 @@ namespace AdminHelper
             _scripts = new List<ScriptItem>();
             InitializeScripts();
 
-            // 3. Проверка состояния выключения (не вызывает side-effect теперь)
+            // 3. Проверка состояния выключения
             RefreshShutdownState(logChange: false);
             StartShutdownCheckTimer();
 
@@ -52,13 +52,47 @@ namespace AdminHelper
             // 5. Подписка на событие смены вкладок
             tabControl.SelectedIndexChanged += TabControl_SelectedIndexChanged;
 
-            // 6. В конце логирование
+            // 6. Мониторинг заблокирован до завершения инициализации
+            btnStartMonitoring.Enabled = false;
+            btnStopMonitoring.Enabled = false;
+            btnStartMonitoring.Text = "Инициализация...";
+
             _logger.Info("Приложение запущено");
             _logger.Info($"Папка для логов: {FileUtils.GetLogsFolderPath()}");
 
-            // 7. Мониторинг НЕ запускаем автоматически
+            // ИСПРАВЛЕНИЕ #1: Тяжёлая инициализация (WMI + LHM) запускается в фоне,
+            // форма открывается сразу — без зависания на несколько секунд.
+            _ = InitMonitoringAsync();
+        }
+
+        private async Task InitMonitoringAsync()
+        {
+            try
+            {
+                await _monitoringService.InitializeAsync();
+
+                // Возвращаемся на UI-поток
+                if (InvokeRequired)
+                    Invoke(OnMonitoringReady);
+                else
+                    OnMonitoringReady();
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Ошибка инициализации мониторинга: {ex.Message}");
+                if (InvokeRequired)
+                    Invoke(new Action(() => btnStartMonitoring.Text = "Ошибка"));
+                else
+                    btnStartMonitoring.Text = "Ошибка";
+            }
+        }
+
+        private void OnMonitoringReady()
+        {
             btnStartMonitoring.Enabled = true;
+            btnStartMonitoring.Text = "▶ Старт";
             btnStopMonitoring.Enabled = false;
+            _logger.Info("Мониторинг готов к запуску");
         }
 
         // ========== ИНИЦИАЛИЗАЦИЯ СКРИПТОВ ==========
@@ -420,19 +454,33 @@ namespace AdminHelper
             }
         }
 
-        private string GetServiceStartType(string serviceName)
+        // ИСПРАВЛЕНИЕ #4: Ранее вызывался отдельный WMI ManagementObject на каждую службу.
+        // Теперь все StartMode читаются одним запросом и кэшируются в словаре.
+        private Dictionary<string, string> _serviceStartTypeCache;
+
+        private void EnsureServiceStartTypeCache()
         {
+            if (_serviceStartTypeCache != null) return;
+            _serviceStartTypeCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             try
             {
-                using (var managementObject = new ManagementObject($"Win32_Service.Name='{serviceName}'"))
+                using var searcher = new ManagementObjectSearcher(
+                    "SELECT Name, StartMode FROM Win32_Service");
+                foreach (ManagementObject obj in searcher.Get())
                 {
-                    return managementObject["StartMode"]?.ToString() ?? "Unknown";
+                    string name = obj["Name"]?.ToString() ?? "";
+                    string mode = obj["StartMode"]?.ToString() ?? "Unknown";
+                    if (!string.IsNullOrEmpty(name))
+                        _serviceStartTypeCache[name] = mode;
                 }
             }
-            catch
-            {
-                return "Unknown";
-            }
+            catch { }
+        }
+
+        private string GetServiceStartType(string serviceName)
+        {
+            EnsureServiceStartTypeCache();
+            return _serviceStartTypeCache.TryGetValue(serviceName, out var mode) ? mode : "Unknown";
         }
 
         private string SafeGetDescription(Process proc)

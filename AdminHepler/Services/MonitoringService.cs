@@ -98,28 +98,43 @@ namespace AdminHelper.Services
         private Dictionary<string, string> _driveLetterToMediaType = new();
         private Dictionary<string, uint?> _driveLetterToRotationRate = new();
 
+        // ИСПРАВЛЕНИЕ #2: Кэш типов дисков по модели — заполняется один раз при старте.
+        // Ранее GetDiskTypeFromMsftDisk делала WMI-запрос при каждом тике мониторинга (каждую секунду).
+        private Dictionary<string, string> _msftDiskTypeCache = new();
+
         // ================================================================
         #region Инициализация
 
+        // ИСПРАВЛЕНИЕ #1: Конструктор только сохраняет logger.
+        // Вся тяжёлая инициализация (WMI + LHM) вынесена в InitializeAsync()
+        // и вызывается из MainForm через Task.Run — не блокирует UI при старте.
         public MonitoringService(ILogger logger)
         {
             _logger = logger;
-            try
+        }
+
+        public async Task InitializeAsync()
+        {
+            await Task.Run(() =>
             {
-                _logger.Info("=== MonitoringService: Init ===");
-                InitStaticCpuInfo();
-                InitStaticRamInfo();
-                InitStaticMbInfo();
-                InitDriveLetterMaps();
-                InitLhm();
-                InitDiskPerfCounters();
-                InitNetCounters();
-                _logger.Info("=== MonitoringService: Ready ===");
-            }
-            catch (Exception ex)
-            {
-                _logger.Error($"MonitoringService init failed: {ex.Message}\n{ex.StackTrace}");
-            }
+                try
+                {
+                    _logger.Info("=== MonitoringService: Init ===");
+                    InitStaticCpuInfo();
+                    InitStaticRamInfo();
+                    InitStaticMbInfo();
+                    InitDriveLetterMaps();
+                    InitMsftDiskCache();   // ИСПРАВЛЕНИЕ #2: кэшируем MSFT_Disk один раз
+                    InitLhm();
+                    InitDiskPerfCounters();
+                    InitNetCounters();
+                    _logger.Info("=== MonitoringService: Ready ===");
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"MonitoringService init failed: {ex.Message}\n{ex.StackTrace}");
+                }
+            });
         }
 
         // ── 1. Статика CPU (WMI) ─────────────────────────────────
@@ -284,6 +299,44 @@ namespace AdminHelper.Services
             catch (Exception ex)
             {
                 _logger.Warning($"Drive letter map failed: {ex.Message}");
+            }
+        }
+
+        // ── 4а. Кэш типов дисков из MSFT_Disk (один раз при старте) ──
+        private void InitMsftDiskCache()
+        {
+            try
+            {
+                var scope = new ManagementScope(@"\\.\ROOT\Microsoft\Windows\Storage");
+                scope.Connect();
+                using var searcher = new ManagementObjectSearcher(scope,
+                    new ObjectQuery("SELECT FriendlyName, MediaType FROM MSFT_Disk"));
+
+                foreach (ManagementObject obj in searcher.Get())
+                {
+                    string name = obj["FriendlyName"]?.ToString() ?? "";
+                    if (string.IsNullOrEmpty(name)) continue;
+
+                    int mt = Convert.ToInt32(obj["MediaType"] ?? 0);
+                    string diskType = mt switch
+                    {
+                        3 => "HDD",
+                        4 => "SSD",
+                        5 => "SCM",
+                        _ => ""
+                    };
+
+                    if (!string.IsNullOrEmpty(diskType))
+                    {
+                        _msftDiskTypeCache[name] = diskType;
+                        _logger.Debug($"MSFT_Disk cache: '{name}' → {diskType}");
+                    }
+                }
+                _logger.Info($"MSFT_Disk cache: {_msftDiskTypeCache.Count} entries");
+            }
+            catch (Exception ex)
+            {
+                _logger.Debug($"MSFT_Disk cache init failed: {ex.Message}");
             }
         }
 
@@ -1105,47 +1158,18 @@ namespace AdminHelper.Services
         }
 
         /// <summary>
-        /// Определяет тип диска через WMI MSFT_Disk (Windows Storage namespace).
-        /// Возвращает корректный MediaType (3=HDD, 4=SSD) без прав администратора,
-        /// в отличие от Win32_DiskDrive.MediaType который всегда даёт "Fixed hard disk media".
+        /// Возвращает тип диска из кэша, заполненного при старте через MSFT_Disk.
+        /// Никакого WMI-запроса в рантайме — только словарь.
         /// </summary>
         private string GetDiskTypeFromMsftDisk(string model)
         {
-            try
+            if (string.IsNullOrEmpty(model)) return "";
+
+            foreach (var kvp in _msftDiskTypeCache)
             {
-                var scope = new ManagementScope(@"\\.\ROOT\Microsoft\Windows\Storage");
-                scope.Connect();
-                using var searcher = new ManagementObjectSearcher(scope,
-                    new ObjectQuery("SELECT FriendlyName, MediaType FROM MSFT_Disk"));
-
-                foreach (ManagementObject obj in searcher.Get())
-                {
-                    string name = obj["FriendlyName"]?.ToString() ?? "";
-                    if (string.IsNullOrEmpty(name)) continue;
-
-                    // Сопоставляем по подстроке в обе стороны
-                    if (!name.Contains(model, StringComparison.OrdinalIgnoreCase) &&
-                        !model.Contains(name, StringComparison.OrdinalIgnoreCase)) continue;
-
-                    int mt = Convert.ToInt32(obj["MediaType"] ?? 0);
-                    string result = mt switch
-                    {
-                        3 => "HDD",
-                        4 => "SSD",
-                        5 => "SCM",
-                        _ => ""
-                    };
-
-                    if (!string.IsNullOrEmpty(result))
-                    {
-                        _logger.Debug($"MSFT_Disk '{name}' → MediaType={mt} ({result})");
-                        return result;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.Debug($"MSFT_Disk lookup failed: {ex.Message}");
+                if (kvp.Key.Contains(model, StringComparison.OrdinalIgnoreCase) ||
+                    model.Contains(kvp.Key, StringComparison.OrdinalIgnoreCase))
+                    return kvp.Value;
             }
             return "";
         }
@@ -1178,7 +1202,9 @@ namespace AdminHelper.Services
         {
             try
             {
-                using var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_VideoController");
+                // SELECT * FROM Win32_VideoController очень медленный — выбираем только нужные поля
+                using var searcher = new ManagementObjectSearcher(
+                    "SELECT Name, DriverVersion FROM Win32_VideoController");
                 foreach (ManagementObject obj in searcher.Get())
                 {
                     string name = obj["Name"]?.ToString() ?? "";
