@@ -74,8 +74,8 @@
             tabControl.SuspendLayout();
             tabPageMonitoring.SuspendLayout();
             gbCPU.SuspendLayout();
-            gbRAM.SuspendLayout();
             gbGPU.SuspendLayout();
+            gbRAM.SuspendLayout();
             gbDisk.SuspendLayout();
             gbMotherboard.SuspendLayout();
             tabPageInfoProccess.SuspendLayout();
@@ -218,6 +218,7 @@
             tbMonitorCPU.Size = new Size(198, 400);
             tbMonitorCPU.TabIndex = 0;
             tbMonitorCPU.Text = "— Мониторинг не запущен —";
+            tbMonitorCPU.TextChanged += tbMonitorCPU_TextChanged;
             // 
             // gbGPU
             // 
@@ -251,7 +252,7 @@
             gbRAM.Size = new Size(204, 422);
             gbRAM.TabIndex = 1;
             gbRAM.TabStop = false;
-            gbRAM.Text = "🧠 RAM";
+            gbRAM.Text = "\U0001f9e0 RAM";
             // 
             // tbMonitoringRAM
             // 
@@ -600,7 +601,7 @@
             gbShutdown.Size = new Size(636, 57);
             gbShutdown.TabIndex = 2;
             gbShutdown.TabStop = false;
-            gbShutdown.Text = "⏻ Shutdown Control";
+            gbShutdown.Text = "\u23fb Shutdown Control";
             // 
             // nudShutdownMinutes
             // 
@@ -633,7 +634,7 @@
             btnOffPc.Name = "btnOffPc";
             btnOffPc.Size = new Size(140, 34);
             btnOffPc.TabIndex = 1;
-            btnOffPc.Text = "⏻ OFF PC (5 мин)";
+            btnOffPc.Text = "\u23fb OFF PC (5 мин)";
             btnOffPc.UseVisualStyleBackColor = false;
             btnOffPc.Click += BtnOffPc_Click;
             // 
@@ -685,10 +686,10 @@
             tabPageMonitoring.ResumeLayout(false);
             gbCPU.ResumeLayout(false);
             gbCPU.PerformLayout();
-            gbRAM.ResumeLayout(false);
-            gbRAM.PerformLayout();
             gbGPU.ResumeLayout(false);
             gbGPU.PerformLayout();
+            gbRAM.ResumeLayout(false);
+            gbRAM.PerformLayout();
             gbDisk.ResumeLayout(false);
             gbDisk.PerformLayout();
             gbMotherboard.ResumeLayout(false);

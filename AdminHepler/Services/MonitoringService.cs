@@ -95,29 +95,46 @@ namespace AdminHelper.Services
         private Dictionary<string, string> _driveLetterToSerial = new();
         private Dictionary<string, string> _driveLetterToBus = new();
         private Dictionary<string, string> _driveLetterToFS = new();
+        private Dictionary<string, string> _driveLetterToMediaType = new();
+        private Dictionary<string, uint?> _driveLetterToRotationRate = new();
+
+        // ИСПРАВЛЕНИЕ #2: Кэш типов дисков по модели — заполняется один раз при старте.
+        // Ранее GetDiskTypeFromMsftDisk делала WMI-запрос при каждом тике мониторинга (каждую секунду).
+        private Dictionary<string, string> _msftDiskTypeCache = new();
 
         // ================================================================
         #region Инициализация
 
+        // ИСПРАВЛЕНИЕ #1: Конструктор только сохраняет logger.
+        // Вся тяжёлая инициализация (WMI + LHM) вынесена в InitializeAsync()
+        // и вызывается из MainForm через Task.Run — не блокирует UI при старте.
         public MonitoringService(ILogger logger)
         {
             _logger = logger;
-            try
+        }
+
+        public async Task InitializeAsync()
+        {
+            await Task.Run(() =>
             {
-                _logger.Info("=== MonitoringService: Init ===");
-                InitStaticCpuInfo();
-                InitStaticRamInfo();
-                InitStaticMbInfo();
-                InitDriveLetterMaps();
-                InitLhm();
-                InitDiskPerfCounters();
-                InitNetCounters();
-                _logger.Info("=== MonitoringService: Ready ===");
-            }
-            catch (Exception ex)
-            {
-                _logger.Error($"MonitoringService init failed: {ex.Message}\n{ex.StackTrace}");
-            }
+                try
+                {
+                    _logger.Info("=== MonitoringService: Init ===");
+                    InitStaticCpuInfo();
+                    InitStaticRamInfo();
+                    InitStaticMbInfo();
+                    InitDriveLetterMaps();
+                    InitMsftDiskCache();   // ИСПРАВЛЕНИЕ #2: кэшируем MSFT_Disk один раз
+                    InitLhm();
+                    InitDiskPerfCounters();
+                    InitNetCounters();
+                    _logger.Info("=== MonitoringService: Ready ===");
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"MonitoringService init failed: {ex.Message}\n{ex.StackTrace}");
+                }
+            });
         }
 
         // ── 1. Статика CPU (WMI) ─────────────────────────────────
@@ -149,7 +166,10 @@ namespace AdminHelper.Services
             }
 
             // PerformanceCounter — fallback для нагрузки если LHM не справится
-            try { _cpuFallbackCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total"); }
+            try
+            {
+                _cpuFallbackCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
+            }
             catch { }
         }
 
@@ -227,6 +247,8 @@ namespace AdminHelper.Services
             try
             {
                 // Win32_DiskDrive → Win32_DiskDriveToDiskPartition → Win32_LogicalDiskToPartition
+                // Используем SELECT * — явное перечисление полей с SpindleSpeed/MediaType
+                // вызывает "Недопустимый запрос" на ряде конфигураций Windows/драйверов.
                 using var driveSrch = new ManagementObjectSearcher("SELECT * FROM Win32_DiskDrive");
                 foreach (ManagementObject drive in driveSrch.Get())
                 {
@@ -236,7 +258,19 @@ namespace AdminHelper.Services
 
                     // Определяем тип шины точнее
                     if (model.Contains("NVMe") || bus.Contains("NVMe")) bus = "NVMe";
-                    else if (bus == "IDE") bus = "SATA";   // большинство SATA в WMI = IDE
+                    else if (bus == "IDE") bus = "SATA";
+
+                    // MediaType и SpindleSpeed — читаем защищённо: поле может отсутствовать
+                    // у виртуальных дисков, USB-адаптеров или при нехватке прав.
+                    string mediaType = "";
+                    uint? rotationRate = null;
+                    try { mediaType = drive["MediaType"]?.ToString() ?? ""; } catch { }
+                    try
+                    {
+                        var rr = drive["SpindleSpeed"];
+                        if (rr != null) rotationRate = Convert.ToUInt32(rr);
+                    }
+                    catch { }
 
                     using var partSrch = drive.GetRelated("Win32_DiskPartition");
                     foreach (ManagementObject partition in partSrch)
@@ -250,11 +284,13 @@ namespace AdminHelper.Services
                                 _driveLetterToModel[letter] = model;
                                 _driveLetterToSerial[letter] = serial;
                                 _driveLetterToBus[letter] = bus;
+                                _driveLetterToMediaType[letter] = mediaType;
+                                _driveLetterToRotationRate[letter] = rotationRate;
 
                                 string fs = logical["FileSystem"]?.ToString() ?? "";
                                 _driveLetterToFS[letter] = fs;
 
-                                _logger.Info($"Drive map: {letter} → {model} ({bus})");
+                                _logger.Info($"Drive map: {letter} → {model} ({bus}) MediaType={mediaType} RPM={rotationRate}");
                             }
                         }
                     }
@@ -263,6 +299,44 @@ namespace AdminHelper.Services
             catch (Exception ex)
             {
                 _logger.Warning($"Drive letter map failed: {ex.Message}");
+            }
+        }
+
+        // ── 4а. Кэш типов дисков из MSFT_Disk (один раз при старте) ──
+        private void InitMsftDiskCache()
+        {
+            try
+            {
+                var scope = new ManagementScope(@"\\.\ROOT\Microsoft\Windows\Storage");
+                scope.Connect();
+                using var searcher = new ManagementObjectSearcher(scope,
+                    new ObjectQuery("SELECT FriendlyName, MediaType FROM MSFT_Disk"));
+
+                foreach (ManagementObject obj in searcher.Get())
+                {
+                    string name = obj["FriendlyName"]?.ToString() ?? "";
+                    if (string.IsNullOrEmpty(name)) continue;
+
+                    int mt = Convert.ToInt32(obj["MediaType"] ?? 0);
+                    string diskType = mt switch
+                    {
+                        3 => "HDD",
+                        4 => "SSD",
+                        5 => "SCM",
+                        _ => ""
+                    };
+
+                    if (!string.IsNullOrEmpty(diskType))
+                    {
+                        _msftDiskTypeCache[name] = diskType;
+                        _logger.Debug($"MSFT_Disk cache: '{name}' → {diskType}");
+                    }
+                }
+                _logger.Info($"MSFT_Disk cache: {_msftDiskTypeCache.Count} entries");
+            }
+            catch (Exception ex)
+            {
+                _logger.Debug($"MSFT_Disk cache init failed: {ex.Message}");
             }
         }
 
@@ -532,21 +606,24 @@ namespace AdminHelper.Services
                 var drives = DriveInfo.GetDrives().Where(d => d.DriveType == DriveType.Fixed);
                 foreach (var d in drives)
                 {
-                    string letter = d.Name.TrimEnd('\\', '/');
-                    string inst = letter + "\\"; // имя инстанции в перфмониторе (C:\)
+                    // d.Name = "C:\", TrimEnd даёт "C:" — именно этот формат нужен PerformanceCounter.
+                    // Ранее было letter + ":" что давало "C::" — отсюда ошибка "Instance does not exist".
+                    string letter = d.Name.TrimEnd('\\', '/'); // "C:"
+                    string perfLetter = letter.TrimEnd(':');   // "C" — для ключа словаря без двоеточия
                     try
                     {
                         var pc = new DiskPerfCounters
                         {
-                            ReadCounter = new PerformanceCounter("LogicalDisk", "Disk Read Bytes/sec", letter + ":"),
-                            WriteCounter = new PerformanceCounter("LogicalDisk", "Disk Write Bytes/sec", letter + ":"),
-                            ActiveCounter = new PerformanceCounter("LogicalDisk", "% Disk Time", letter + ":")
+                            ReadCounter = new PerformanceCounter("LogicalDisk", "Disk Read Bytes/sec", letter),
+                            WriteCounter = new PerformanceCounter("LogicalDisk", "Disk Write Bytes/sec", letter),
+                            ActiveCounter = new PerformanceCounter("LogicalDisk", "% Disk Time", letter)
                         };
-                        // Первый вызов — инициализация
                         pc.ReadCounter.NextValue();
                         pc.WriteCounter.NextValue();
                         pc.ActiveCounter.NextValue();
+                        // Ключ словаря — без двоеточия, т.к. _driveLetterToModel тоже хранит "C:" из DeviceID
                         _diskPerfCounters[letter] = pc;
+                        _logger.Debug($"DiskPerfCounter {letter} OK");
                     }
                     catch (Exception ex)
                     {
@@ -880,6 +957,10 @@ namespace AdminHelper.Services
                     _driveLetterToBus.TryGetValue(letter, out string bus);
                     _driveLetterToFS.TryGetValue(letter, out string fs);
 
+                    _driveLetterToMediaType.TryGetValue(letter, out string mediaType);
+                    _driveLetterToRotationRate.TryGetValue(letter, out uint? rotationRate);
+
+
                     var di = new DiskInfo
                     {
                         Name = letter,
@@ -887,7 +968,7 @@ namespace AdminHelper.Services
                         SerialNumber = serial ?? "",
                         BusType = bus ?? "Unknown",
                         FileSystem = fs ?? "",
-                        Type = DetermineType(model, bus),
+                        Type = DetermineType(model, bus, mediaType, rotationRate),
                         TotalSizeGB = total,
                         FreeSpaceGB = free,
                         UsedSpaceGB = used,
@@ -979,7 +1060,7 @@ namespace AdminHelper.Services
         private StorageSensorSet FindStorageSetByModel(string model)
         {
             if (model == null) return null;
-            // Ищем по модели (частичное совпадение — WMI и LHM могут немного отличаться)
+
             foreach (var kvp in _storageSensors)
             {
                 string lhmName = kvp.Key;
@@ -987,23 +1068,143 @@ namespace AdminHelper.Services
                     model.Contains(lhmName, StringComparison.OrdinalIgnoreCase))
                     return kvp.Value;
             }
-            // Fallback: первый доступный
             return _storageSensors.Count > 0 ? _storageSensors.Values.First() : null;
         }
 
-        private string DetermineType(string model, string bus)
+        private string DetermineType(string model, string bus, string mediaType, uint? rotationRate)
         {
-            if (bus == "NVMe" || (model?.Contains("NVMe") ?? false)) return "NVMe";
-            if (model?.Contains("SSD") ?? false) return "SSD";
+            if (bus == "NVMe") return "NVMe";
             if (bus == "USB") return "USB";
-            return "HDD";
+
+            // MSFT_Disk — точный MediaType (3=HDD, 4=SSD), работает без прав администратора.
+            // Win32_DiskDrive.MediaType возвращает "Fixed hard disk media" для любого типа — бесполезно.
+            string msftType = GetDiskTypeFromMsftDisk(model ?? "");
+            if (!string.IsNullOrEmpty(msftType))
+                return msftType;
+
+            // SpindleSpeed: 0 или 1 — нет вращения (SSD), >1 — RPM (HDD). Требует прав администратора.
+            if (rotationRate.HasValue)
+            {
+                if (rotationRate.Value == 0 || rotationRate.Value == 1) return "SSD";
+                if (rotationRate.Value > 1) return "HDD";
+            }
+
+            // Название модели — финальный fallback
+            var m = model ?? "";
+
+            if (m.Contains("NVMe", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("PCIe", StringComparison.OrdinalIgnoreCase)) return "NVMe";
+
+            if (m.Contains("SSD", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("Solid", StringComparison.OrdinalIgnoreCase) ||
+                // Crucial BX/MX серии
+                m.Contains("BX500", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("BX300", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("BX200", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("MX500", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("MX300", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("MX200", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("P3 Plus", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("P5 Plus", StringComparison.OrdinalIgnoreCase) ||
+                // Samsung EVO/QVO/PRO
+                m.Contains("870 EVO", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("860 EVO", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("850 EVO", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("870 QVO", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("860 QVO", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("970 EVO", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("980 PRO", StringComparison.OrdinalIgnoreCase) ||
+                // WD Blue/Green — SSD линейка (в отличие от WD Blue HDD)
+                m.Contains("WD Blue SSD", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("WD Green SSD", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("WD_GREEN", StringComparison.OrdinalIgnoreCase) ||
+                // Apacer AS серия
+                m.Contains("AS350", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("AS340", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("AS330", StringComparison.OrdinalIgnoreCase) ||
+                // Kingston A/UV серии
+                m.Contains("SA400", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("UV500", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("UV400", StringComparison.OrdinalIgnoreCase) ||
+                // Patriot
+                m.Contains("Burst Elite", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("P210", StringComparison.OrdinalIgnoreCase) ||
+                // ADATA
+                m.Contains("SU800", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("SU650", StringComparison.OrdinalIgnoreCase) ||
+                // Transcend
+                m.Contains("TS480", StringComparison.OrdinalIgnoreCase)) return "SSD";
+
+            if (m.Contains("HDD", StringComparison.OrdinalIgnoreCase) ||
+                // Seagate
+                m.Contains("Barracuda", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("IronWolf", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("Exos", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("Skyhawk", StringComparison.OrdinalIgnoreCase) ||
+                // WD цветные серии HDD (без слова SSD)
+                m.Contains("WD Black", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("WD Red", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("WD Purple", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("WD Gold", StringComparison.OrdinalIgnoreCase) ||
+                // Toshiba HDD серии
+                m.Contains("DT01", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("MQ01", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("MQ04", StringComparison.OrdinalIgnoreCase) ||
+                // HGST
+                m.Contains("HUS", StringComparison.OrdinalIgnoreCase) ||
+                m.Contains("HTS", StringComparison.OrdinalIgnoreCase)) return "HDD";
+
+            return "Unknown";
+        }
+
+        /// <summary>
+        /// Возвращает тип диска из кэша, заполненного при старте через MSFT_Disk.
+        /// Никакого WMI-запроса в рантайме — только словарь.
+        /// </summary>
+        private string GetDiskTypeFromMsftDisk(string model)
+        {
+            if (string.IsNullOrEmpty(model)) return "";
+
+            foreach (var kvp in _msftDiskTypeCache)
+            {
+                if (kvp.Key.Contains(model, StringComparison.OrdinalIgnoreCase) ||
+                    model.Contains(kvp.Key, StringComparison.OrdinalIgnoreCase))
+                    return kvp.Value;
+            }
+            return "";
+        }
+
+        private (string type, string model, string bus, string mediaType, uint? rotationRate) GetDiskWmiInfo(string deviceId)
+        {
+            try
+            {
+                // Win32_DiskDrive даёт MediaType и SpindleSpeed
+                var query = $"SELECT Model, MediaType, SpindleSpeed, InterfaceType FROM Win32_DiskDrive WHERE DeviceID='{deviceId.Replace("\\", "\\\\")}'";
+                using var searcher = new ManagementObjectSearcher(query);
+                foreach (ManagementObject obj in searcher.Get())
+                {
+                    var model = obj["Model"]?.ToString();
+                    var mediaType = obj["MediaType"]?.ToString();
+                    var bus = obj["InterfaceType"]?.ToString(); // "IDE", "SCSI", "NVMe", "USB"
+                    uint? rpm = obj["SpindleSpeed"] is uint u ? u : null;
+
+                    return (DetermineType(model, bus, mediaType, rpm), model, bus, mediaType, rpm);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning($"WMI disk info failed for {deviceId}: {ex.Message}");
+            }
+            return ("Unknown", null, null, null, null);
         }
 
         private string GetGpuDriverVersion(string gpuName)
         {
             try
             {
-                using var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_VideoController");
+                // SELECT * FROM Win32_VideoController очень медленный — выбираем только нужные поля
+                using var searcher = new ManagementObjectSearcher(
+                    "SELECT Name, DriverVersion FROM Win32_VideoController");
                 foreach (ManagementObject obj in searcher.Get())
                 {
                     string name = obj["Name"]?.ToString() ?? "";
@@ -1029,14 +1230,33 @@ namespace AdminHelper.Services
                     if (name == "Properties") continue;
                     using var sub = baseKey.OpenSubKey(name);
                     var val = sub?.GetValue("HardwareInformation.qwMemorySize");
-                    if (val != null)
+                    if (val == null) continue;
+
+                    ulong bytes = val switch
                     {
-                        ulong bytes = Convert.ToUInt64(val);
-                        if (bytes > 0) return bytes / 1024.0 / 1024.0;
+                        // Большинство драйверов (NVIDIA, AMD новые)
+                        long l => (ulong)l,
+                        ulong u => u,
+                        int i => (ulong)i,
+                        uint ui => (ulong)ui,
+                        // Некоторые драйверы пишут как byte[8] (little-endian)
+                        byte[] b when b.Length >= 8 => BitConverter.ToUInt64(b, 0),
+                        byte[] b when b.Length == 4 => BitConverter.ToUInt32(b, 0),
+                        _ => Convert.ToUInt64(val)
+                    };
+
+                    if (bytes > 0)
+                    {
+                        double mb = bytes / 1024.0 / 1024.0;
+                        _logger.Info($"GPU Memory from registry: {bytes} bytes = {mb} MB");
+                        return mb; // Возвращаем MB
                     }
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                _logger.Warning($"Registry GPU memory failed: {ex.Message}");
+            }
             return 0;
         }
 
@@ -1057,17 +1277,19 @@ namespace AdminHelper.Services
             return 0;
         }
 
-        // Декодирование типа RAM из SMBIOSMemoryType
         private static string DecodeRamType(int code) => code switch
         {
-            0x12 => "DDR3",
-            0x13 => "DDR3",
-            0x18 => "DDR4",
-            0x1A => "DDR5",
-            0x22 => "DDR5",
-            0x24 => "LPDDR4",
-            0x26 => "LPDDR5",
-            _ => "DDR"
+            0x12 => "DDR3",   // 18
+            0x13 => "DDR3",   // 19
+            0x18 => "DDR4",   // 24
+            0x1A => "DDR4",   // 26
+            0x1B => "LPDDR3", // 27
+            0x1C => "LPDDR4", // 28
+            0x1E => "DDR5",   // 30
+            0x22 => "DDR5",   // 34
+            0x24 => "LPDDR4", // 36
+            0x26 => "LPDDR5", // 38
+            _ => $"Unknown (0x{code:X2})"
         };
 
         private static string DecodeRamFormFactor(int code) => code switch

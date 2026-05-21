@@ -20,11 +20,10 @@ namespace AdminHelper
         private System.Windows.Forms.Timer _updateTimer;
         private bool _isMonitoring = false;
         private List<ScriptItem> _scripts;
-        private readonly SystemTools _systemTools;   // BugFix: readonly, создаётся один раз
+        private readonly SystemTools _systemTools;
         private bool _isShutdownScheduled = false;
         private System.Windows.Forms.Timer _shutdownCheckTimer;
 
-        // Таймер для отображения обратного отсчёта выключения
         private System.Windows.Forms.Timer _shutdownCountdownTimer;
         private DateTime _shutdownScheduledAt;
         private int _shutdownMinutes = 5;
@@ -33,9 +32,9 @@ namespace AdminHelper
         {
             InitializeComponent();
 
-            // 1. Сначала сервисы
+            // 1. Сначала сервисы — но MonitoringService инициализируется асинхронно (см. ниже)
             _logger = new LoggerService(rtbLogger);
-            _systemTools = new SystemTools(_logger);   // BugFix: единственный экземпляр
+            _systemTools = new SystemTools(_logger);
             _monitoringService = new MonitoringService(_logger);
             _monitoringService.DataUpdated += OnMonitoringDataUpdated;
 
@@ -43,7 +42,7 @@ namespace AdminHelper
             _scripts = new List<ScriptItem>();
             InitializeScripts();
 
-            // 3. Проверка состояния выключения (не вызывает side-effect теперь)
+            // 3. Проверка состояния выключения
             RefreshShutdownState(logChange: false);
             StartShutdownCheckTimer();
 
@@ -53,13 +52,47 @@ namespace AdminHelper
             // 5. Подписка на событие смены вкладок
             tabControl.SelectedIndexChanged += TabControl_SelectedIndexChanged;
 
-            // 6. В конце логирование
+            // 6. Мониторинг заблокирован до завершения инициализации
+            btnStartMonitoring.Enabled = false;
+            btnStopMonitoring.Enabled = false;
+            btnStartMonitoring.Text = "Инициализация...";
+
             _logger.Info("Приложение запущено");
             _logger.Info($"Папка для логов: {FileUtils.GetLogsFolderPath()}");
 
-            // 7. Мониторинг НЕ запускаем автоматически
+            // ИСПРАВЛЕНИЕ #1: Тяжёлая инициализация (WMI + LHM) запускается в фоне,
+            // форма открывается сразу — без зависания на несколько секунд.
+            _ = InitMonitoringAsync();
+        }
+
+        private async Task InitMonitoringAsync()
+        {
+            try
+            {
+                await _monitoringService.InitializeAsync();
+
+                // Возвращаемся на UI-поток
+                if (InvokeRequired)
+                    Invoke(OnMonitoringReady);
+                else
+                    OnMonitoringReady();
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Ошибка инициализации мониторинга: {ex.Message}");
+                if (InvokeRequired)
+                    Invoke(new Action(() => btnStartMonitoring.Text = "Ошибка"));
+                else
+                    btnStartMonitoring.Text = "Ошибка";
+            }
+        }
+
+        private void OnMonitoringReady()
+        {
             btnStartMonitoring.Enabled = true;
+            btnStartMonitoring.Text = "▶ Старт";
             btnStopMonitoring.Enabled = false;
+            _logger.Info("Мониторинг готов к запуску");
         }
 
         // ========== ИНИЦИАЛИЗАЦИЯ СКРИПТОВ ==========
@@ -138,20 +171,12 @@ namespace AdminHelper
 
         // ========== ВЫКЛЮЧЕНИЕ ПК ==========
 
-        /// <summary>
-        /// Проверяет наличие запланированного выключения через WMI (без side-effect).
-        /// Возвращает true если выключение запланировано.
-        /// </summary>
         private bool CheckShutdownViaWMI()
         {
             try
             {
-                // Ищем процесс shutdown.exe с аргументом /s или /r
                 var shutdownProcs = Process.GetProcessesByName("shutdown");
                 if (shutdownProcs.Length > 0) return true;
-
-                // Дополнительная проверка через реестр (PendingFileRenameOperations — не о выключении!)
-                // Убрана ложная проверка из оригинала — PendingFileRenameOperations не связан с таймером shutdown.
                 return false;
             }
             catch
@@ -160,15 +185,10 @@ namespace AdminHelper
             }
         }
 
-        /// <summary>
-        /// Обновляет состояние кнопок и флага выключения.
-        /// BugFix: не вызывает side-effect (не отменяет таймер при проверке).
-        /// </summary>
         private void RefreshShutdownState(bool logChange = true)
         {
             bool wasScheduled = _isShutdownScheduled;
 
-            // Используем WMI-метод без side-effect
             _isShutdownScheduled = CheckShutdownViaWMI();
 
             if (logChange && wasScheduled != _isShutdownScheduled)
@@ -254,7 +274,6 @@ namespace AdminHelper
 
         private void BtnOffPc_Click(object sender, EventArgs e)
         {
-            // BugFix: используем _systemTools, не создаём новый экземпляр
             var result = MessageBox.Show(
                 $"Запланировать выключение через {_shutdownMinutes} минут?",
                 "Подтверждение",
@@ -282,7 +301,7 @@ namespace AdminHelper
         private void nudShutdownMinutes_ValueChanged(object sender, EventArgs e)
         {
             _shutdownMinutes = (int)nudShutdownMinutes.Value;
-            btnOffPc.Text = $"⏻ OFF PC ({_shutdownMinutes} мин)";
+            btnOffPc.Text = $"OFF PC ({_shutdownMinutes} мин)";
         }
 
         // ========== МОНИТОРИНГ ==========
@@ -325,8 +344,6 @@ namespace AdminHelper
             _logger.Info("Мониторинг ресурсов остановлен");
         }
 
-        // BugFix: UpdateTimer_Tick обновляет Processes/Services только
-        // если соответствующая вкладка активна — экономит ресурсы.
         private async void UpdateTimer_Tick(object sender, EventArgs e)
         {
             int selectedTab = tabControl.SelectedIndex;
@@ -340,7 +357,6 @@ namespace AdminHelper
             });
         }
 
-        // BugFix: Загружаем данные при переключении на вкладку Processes/Services
         private async void TabControl_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (tabControl.SelectedTab == tabPageInfoProccess)
@@ -438,19 +454,33 @@ namespace AdminHelper
             }
         }
 
-        private string GetServiceStartType(string serviceName)
+        // ИСПРАВЛЕНИЕ #4: Ранее вызывался отдельный WMI ManagementObject на каждую службу.
+        // Теперь все StartMode читаются одним запросом и кэшируются в словаре.
+        private Dictionary<string, string> _serviceStartTypeCache;
+
+        private void EnsureServiceStartTypeCache()
         {
+            if (_serviceStartTypeCache != null) return;
+            _serviceStartTypeCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             try
             {
-                using (var managementObject = new ManagementObject($"Win32_Service.Name='{serviceName}'"))
+                using var searcher = new ManagementObjectSearcher(
+                    "SELECT Name, StartMode FROM Win32_Service");
+                foreach (ManagementObject obj in searcher.Get())
                 {
-                    return managementObject["StartMode"]?.ToString() ?? "Unknown";
+                    string name = obj["Name"]?.ToString() ?? "";
+                    string mode = obj["StartMode"]?.ToString() ?? "Unknown";
+                    if (!string.IsNullOrEmpty(name))
+                        _serviceStartTypeCache[name] = mode;
                 }
             }
-            catch
-            {
-                return "Unknown";
-            }
+            catch { }
+        }
+
+        private string GetServiceStartType(string serviceName)
+        {
+            EnsureServiceStartTypeCache();
+            return _serviceStartTypeCache.TryGetValue(serviceName, out var mode) ? mode : "Unknown";
         }
 
         private string SafeGetDescription(Process proc)
@@ -662,7 +692,7 @@ namespace AdminHelper
                 bool hasNet = false;
                 foreach (var ni in interfaces)
                 {
-                    // Проверяем, что интерфейс поднят и не является Loopback (локальной петлей)
+
                     if (ni.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up &&
                         ni.NetworkInterfaceType != System.Net.NetworkInformation.NetworkInterfaceType.Loopback)
                     {
@@ -1036,7 +1066,7 @@ namespace AdminHelper
         {
             // Блокируем кнопку на время бекапа
             btnBackupScript.Enabled = false;
-            btnBackupScript.Text = "⏳ Backup...";
+            btnBackupScript.Text = "Backup...";
 
             Task.Run(() =>
             {
@@ -1085,7 +1115,7 @@ namespace AdminHelper
                     Invoke(new Action(() =>
                     {
                         btnBackupScript.Enabled = true;
-                        btnBackupScript.Text = "📁 Backup Script";
+                        btnBackupScript.Text = "Backup Script";
                     }));
                 }
             });
@@ -1101,8 +1131,10 @@ namespace AdminHelper
             _monitoringService?.Dispose();
             base.OnFormClosing(e);
         }
-    }
 
-    // BugFix: ScriptItem вынесен в отдельный файл Models, но для совместимости оставлен здесь
-    
+        private void tbMonitorCPU_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+    }
 }

@@ -3,14 +3,9 @@ using System.Collections.Generic;
 
 namespace AdminHelper.Models
 {
-    // ============================================================
-    //  СИСТЕМНАЯ ИНФОРМАЦИЯ — полная модель
-    //  Библиотеки: LibreHardwareMonitor, System.Management (WMI)
-    // ============================================================
-
     public class SystemInfo
     {
-        // ── CPU ──────────────────────────────────────────────────
+        // ── CPU
         public CpuInfo Cpu { get; set; } = new CpuInfo();
 
         // ── GPU (список: iGPU + dGPU) ────────────────────────────
