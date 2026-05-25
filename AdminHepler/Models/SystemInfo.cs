@@ -172,13 +172,13 @@ namespace AdminHelper.Models
     public class DiskInfo
     {
         // Идентификация
-        public string Name { get; set; } = "";   // буква диска "C:"
-        public string Model { get; set; } = "";
+        public string Name { get; set; } = "";          // буква тома "C:"
+        public string VolumeLabel { get; set; } = "";   // метка тома (например "System", "Data")
+        public string Model { get; set; } = "";          // полное имя диска: "CT480BX500SSD1"
         public string SerialNumber { get; set; } = "";
         public string FirmwareRev { get; set; } = "";
-        public string Type { get; set; } = "";   // "NVMe" / "SSD" / "HDD"
-        public string BusType { get; set; } = "";   // "NVMe" / "SATA" / "USB"
-        public string FileSystem { get; set; } = "";   // "NTFS" / "exFAT"
+        public string BusType { get; set; } = "";        // "NVMe" / "SATA" / "USB" / "SCSI"
+        public string FileSystem { get; set; } = "";     // "NTFS" / "exFAT"
 
         // Ёмкость
         public double TotalSizeGB { get; set; }
@@ -187,18 +187,18 @@ namespace AdminHelper.Models
         public double UsagePercent { get; set; }
 
         // Состояние (из LHM SMART)
-        public double Temperature { get; set; }   // °C
-        public int HealthPercent { get; set; } = -1;   // % (-1 = нет данных)
+        public double Temperature { get; set; }          // °C
+        public int HealthPercent { get; set; } = -1;     // % (-1 = нет данных)
         public ulong ReadErrorsRaw { get; set; }
         public ulong TotalReadsGB { get; set; }
         public ulong TotalWritesGB { get; set; }
-        public int PowerOnHours { get; set; }   // часов работы
-        public int PowerCycles { get; set; }
+        public int PowerOnHours { get; set; }            // часов работы
+        public int PowerCycles { get; set; }             // кол-во включений
 
         // Производительность (текущая)
         public double ReadSpeedMBs { get; set; }
         public double WriteSpeedMBs { get; set; }
-        public double ActiveTimePercent { get; set; }  // % занятости
+        public double ActiveTimePercent { get; set; }    // % занятости
 
         // Устаревшие свойства (обратная совместимость)
         public double TotalSize { get => TotalSizeGB; set => TotalSizeGB = value; }

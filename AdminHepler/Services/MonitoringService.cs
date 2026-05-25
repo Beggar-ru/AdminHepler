@@ -579,23 +579,26 @@ namespace AdminHelper.Services
                         if (s.Name.Contains("Write Rate")) set.WriteRate = s;
                         break;
                     case SensorType.Level:
-                        if (s.Name.Contains("Remaining Life") || s.Name.Contains("Wear"))
+                        // "Life" / "Remaining Life" / "Wear Leveling" — ресурс SSD
+                        if (s.Name.Contains("Life") || s.Name.Contains("Wear") || s.Name.Contains("Remaining"))
                             set.HealthLevel = s;
                         break;
-                        /*
-                    case SensorType.RawValue:
-                        if (s.Name.Contains("Power On Hours")) set.PowerOnHours = s;
-                        if (s.Name.Contains("Power Cycle")) set.PowerCycles = s;
-                        if (s.Name.Contains("Read Error")) set.ReadErrors = s;
+                    case SensorType.Factor:
+                        // LHM отдаёт PowerOnHours и PowerCycles как Factor (не RawValue)
+                        // Видно в логах: Factor 'Power On Hours' = 7420, Factor 'Power On Count' = 3857
+                        if (s.Name.Contains("Power On Hours") || s.Name.Contains("Hours"))
+                            set.PowerOnHours = s;
+                        if (s.Name.Contains("Power On Count") || s.Name.Contains("Power Cycle"))
+                            set.PowerCycles = s;
                         break;
-                        */
                 }
             }
 
             _storageSensors[hw.Name] = set;
             _logger.Info($"Storage '{hw.Name}': Temp={set.Temperature?.Name ?? "N/A"}, " +
                          $"Health={set.HealthLevel?.Name ?? "N/A"}, " +
-                         $"ReadRate={set.ReadRate?.Name ?? "N/A"}");
+                         $"Hours={set.PowerOnHours?.Name ?? "N/A"}, " +
+                         $"Cycles={set.PowerCycles?.Name ?? "N/A"}");
         }
 
         // ── 6. PerformanceCounter для дисков ──────────────────────
@@ -956,19 +959,21 @@ namespace AdminHelper.Services
                     _driveLetterToSerial.TryGetValue(letter, out string serial);
                     _driveLetterToBus.TryGetValue(letter, out string bus);
                     _driveLetterToFS.TryGetValue(letter, out string fs);
-
                     _driveLetterToMediaType.TryGetValue(letter, out string mediaType);
                     _driveLetterToRotationRate.TryGetValue(letter, out uint? rotationRate);
 
+                    // Метка тома — "System", "Data", пустая строка если не задана
+                    string volumeLabel = "";
+                    try { volumeLabel = drive.VolumeLabel; } catch { }
 
                     var di = new DiskInfo
                     {
                         Name = letter,
+                        VolumeLabel = volumeLabel,
                         Model = model ?? "Unknown",
                         SerialNumber = serial ?? "",
                         BusType = bus ?? "Unknown",
                         FileSystem = fs ?? "",
-                        Type = DetermineType(model, bus, mediaType, rotationRate),
                         TotalSizeGB = total,
                         FreeSpaceGB = free,
                         UsedSpaceGB = used,
@@ -981,15 +986,19 @@ namespace AdminHelper.Services
                     {
                         storageSet.Hardware.Update();
                         di.Temperature = storageSet.Temperature?.Value ?? 0;
+
                         di.HealthPercent = storageSet.HealthLevel != null
                             ? (int)(storageSet.HealthLevel.Value ?? -1)
                             : -1;
+
                         di.TotalReadsGB = storageSet.TotalRead != null
                             ? (ulong)(storageSet.TotalRead.Value ?? 0)
                             : 0;
                         di.TotalWritesGB = storageSet.TotalWrite != null
                             ? (ulong)(storageSet.TotalWrite.Value ?? 0)
                             : 0;
+
+                        // PowerOnHours и PowerCycles теперь читаются из Factor-сенсоров
                         di.PowerOnHours = storageSet.PowerOnHours != null
                             ? (int)(storageSet.PowerOnHours.Value ?? 0)
                             : 0;
@@ -997,14 +1006,15 @@ namespace AdminHelper.Services
                             ? (int)(storageSet.PowerCycles.Value ?? 0)
                             : 0;
 
-                        if (storageSet.ReadRate != null) di.ReadSpeedMBs = (storageSet.ReadRate.Value ?? 0) / 1024.0;
-                        if (storageSet.WriteRate != null) di.WriteSpeedMBs = (storageSet.WriteRate.Value ?? 0) / 1024.0;
+                        if (storageSet.ReadRate != null)
+                            di.ReadSpeedMBs = (storageSet.ReadRate.Value ?? 0) / 1024.0;
+                        if (storageSet.WriteRate != null)
+                            di.WriteSpeedMBs = (storageSet.WriteRate.Value ?? 0) / 1024.0;
                     }
 
                     // PerformanceCounter скорости / активность
                     if (_diskPerfCounters.TryGetValue(letter, out var pc))
                     {
-                        // ReadRate/WriteRate из LHM предпочтительнее — не перезаписываем если есть
                         double readBps = pc.ReadCounter.NextValue();
                         double writeBps = pc.WriteCounter.NextValue();
                         if (di.ReadSpeedMBs == 0) di.ReadSpeedMBs = readBps / 1024.0 / 1024.0;

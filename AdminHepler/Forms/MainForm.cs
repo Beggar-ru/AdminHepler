@@ -633,28 +633,54 @@ namespace AdminHelper
             {
                 foreach (var disk in info.Disks)
                 {
-                    sb.AppendLine($"[{disk.Name}] {disk.Model}");
-                    sb.AppendLine($"  Тип:      {disk.Type}  ({disk.BusType})  {disk.FileSystem}");
+                    // Заголовок: буква тома + метка (если есть) + модель
+                    string volLabel = !string.IsNullOrEmpty(disk.VolumeLabel)
+                        ? $" ({disk.VolumeLabel})" : "";
+                    sb.AppendLine($"[{disk.Name}]{volLabel}");
+                    sb.AppendLine($"  {disk.Model}");
+
+                    // Шина + ФС
+                    sb.AppendLine($"  {disk.BusType}  ·  {disk.FileSystem}");
+
+                    // Серийный номер
+                    if (!string.IsNullOrEmpty(disk.SerialNumber))
+                        sb.AppendLine($"  S/N: {disk.SerialNumber}");
+
+                    // Ёмкость и занятость
                     sb.AppendLine($"  Размер:   {disk.TotalSizeGB:F1} GB");
                     sb.AppendLine($"  Занято:   {disk.UsedSpaceGB:F1} GB  ({disk.UsagePercent:F1}%)");
                     sb.AppendLine($"  Свободно: {disk.FreeSpaceGB:F1} GB");
 
+                    // SMART данные
                     if (disk.Temperature > 0)
-                        sb.AppendLine($"  Темп.:    {disk.Temperature:F1}°C");
+                        sb.AppendLine($"  Темп.:    {disk.Temperature:F0}°C");
                     if (disk.HealthPercent >= 0)
-                        sb.AppendLine($"  Здоровье: {disk.HealthPercent}%");
+                        sb.AppendLine($"  Ресурс:   {disk.HealthPercent}%");
+
+                    // Наработка — часы + дни + включения
                     if (disk.PowerOnHours > 0)
-                        sb.AppendLine($"  Наработка:{disk.PowerOnHours} ч  ({disk.PowerOnHours / 24 / 30} мес.)");
+                    {
+                        int days = disk.PowerOnHours / 24;
+                        int months = days / 30;
+                        string uptime = months > 0
+                            ? $"{disk.PowerOnHours} ч  ({days} дн. / {months} мес.)"
+                            : $"{disk.PowerOnHours} ч  ({days} дн.)";
+                        sb.AppendLine($"  Наработка:{uptime}");
+                    }
                     if (disk.PowerCycles > 0)
-                        sb.AppendLine($"  Вкл/выкл: {disk.PowerCycles}");
+                        sb.AppendLine($"  Включений:{disk.PowerCycles}");
+
+                    // Объём записанных/прочитанных данных за всё время
                     if (disk.TotalReadsGB > 0 || disk.TotalWritesGB > 0)
-                        sb.AppendLine($"  R/W Total:{disk.TotalReadsGB} / {disk.TotalWritesGB} GB");
+                        sb.AppendLine($"  R/W total:{disk.TotalReadsGB} / {disk.TotalWritesGB} GB");
+
+                    // Текущая скорость
                     if (disk.ReadSpeedMBs > 0 || disk.WriteSpeedMBs > 0)
-                        sb.AppendLine($"  Скорость: R {disk.ReadSpeedMBs:F1} MB/s  W {disk.WriteSpeedMBs:F1} MB/s");
+                        sb.AppendLine($"  Скорость: R {disk.ReadSpeedMBs:F1}  W {disk.WriteSpeedMBs:F1} MB/s");
                     if (disk.ActiveTimePercent > 0)
                         sb.AppendLine($"  Занятость:{disk.ActiveTimePercent:F1}%");
 
-                    sb.AppendLine(new string('─', 28));
+                    sb.AppendLine(new string('─', 30));
                 }
             }
             else
