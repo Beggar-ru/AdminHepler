@@ -1086,91 +1086,18 @@ namespace AdminHelper.Services
             if (bus == "NVMe") return "NVMe";
             if (bus == "USB") return "USB";
 
-            // MSFT_Disk — точный MediaType (3=HDD, 4=SSD), работает без прав администратора.
-            // Win32_DiskDrive.MediaType возвращает "Fixed hard disk media" для любого типа — бесполезно.
             string msftType = GetDiskTypeFromMsftDisk(model ?? "");
             if (!string.IsNullOrEmpty(msftType))
                 return msftType;
 
-            // SpindleSpeed: 0 или 1 — нет вращения (SSD), >1 — RPM (HDD). Требует прав администратора.
             if (rotationRate.HasValue)
             {
                 if (rotationRate.Value == 0 || rotationRate.Value == 1) return "SSD";
                 if (rotationRate.Value > 1) return "HDD";
             }
-
-            // Название модели — финальный fallback
-            var m = model ?? "";
-
-            if (m.Contains("NVMe", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("PCIe", StringComparison.OrdinalIgnoreCase)) return "NVMe";
-
-            if (m.Contains("SSD", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("Solid", StringComparison.OrdinalIgnoreCase) ||
-                // Crucial BX/MX серии
-                m.Contains("BX500", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("BX300", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("BX200", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("MX500", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("MX300", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("MX200", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("P3 Plus", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("P5 Plus", StringComparison.OrdinalIgnoreCase) ||
-                // Samsung EVO/QVO/PRO
-                m.Contains("870 EVO", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("860 EVO", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("850 EVO", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("870 QVO", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("860 QVO", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("970 EVO", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("980 PRO", StringComparison.OrdinalIgnoreCase) ||
-                // WD Blue/Green — SSD линейка (в отличие от WD Blue HDD)
-                m.Contains("WD Blue SSD", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("WD Green SSD", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("WD_GREEN", StringComparison.OrdinalIgnoreCase) ||
-                // Apacer AS серия
-                m.Contains("AS350", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("AS340", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("AS330", StringComparison.OrdinalIgnoreCase) ||
-                // Kingston A/UV серии
-                m.Contains("SA400", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("UV500", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("UV400", StringComparison.OrdinalIgnoreCase) ||
-                // Patriot
-                m.Contains("Burst Elite", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("P210", StringComparison.OrdinalIgnoreCase) ||
-                // ADATA
-                m.Contains("SU800", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("SU650", StringComparison.OrdinalIgnoreCase) ||
-                // Transcend
-                m.Contains("TS480", StringComparison.OrdinalIgnoreCase)) return "SSD";
-
-            if (m.Contains("HDD", StringComparison.OrdinalIgnoreCase) ||
-                // Seagate
-                m.Contains("Barracuda", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("IronWolf", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("Exos", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("Skyhawk", StringComparison.OrdinalIgnoreCase) ||
-                // WD цветные серии HDD (без слова SSD)
-                m.Contains("WD Black", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("WD Red", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("WD Purple", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("WD Gold", StringComparison.OrdinalIgnoreCase) ||
-                // Toshiba HDD серии
-                m.Contains("DT01", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("MQ01", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("MQ04", StringComparison.OrdinalIgnoreCase) ||
-                // HGST
-                m.Contains("HUS", StringComparison.OrdinalIgnoreCase) ||
-                m.Contains("HTS", StringComparison.OrdinalIgnoreCase)) return "HDD";
-
             return "Unknown";
         }
 
-        /// <summary>
-        /// Возвращает тип диска из кэша, заполненного при старте через MSFT_Disk.
-        /// Никакого WMI-запроса в рантайме — только словарь.
-        /// </summary>
         private string GetDiskTypeFromMsftDisk(string model)
         {
             if (string.IsNullOrEmpty(model)) return "";
@@ -1182,30 +1109,6 @@ namespace AdminHelper.Services
                     return kvp.Value;
             }
             return "";
-        }
-
-        private (string type, string model, string bus, string mediaType, uint? rotationRate) GetDiskWmiInfo(string deviceId)
-        {
-            try
-            {
-                // Win32_DiskDrive даёт MediaType и SpindleSpeed
-                var query = $"SELECT Model, MediaType, SpindleSpeed, InterfaceType FROM Win32_DiskDrive WHERE DeviceID='{deviceId.Replace("\\", "\\\\")}'";
-                using var searcher = new ManagementObjectSearcher(query);
-                foreach (ManagementObject obj in searcher.Get())
-                {
-                    var model = obj["Model"]?.ToString();
-                    var mediaType = obj["MediaType"]?.ToString();
-                    var bus = obj["InterfaceType"]?.ToString(); // "IDE", "SCSI", "NVMe", "USB"
-                    uint? rpm = obj["SpindleSpeed"] is uint u ? u : null;
-
-                    return (DetermineType(model, bus, mediaType, rpm), model, bus, mediaType, rpm);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.Warning($"WMI disk info failed for {deviceId}: {ex.Message}");
-            }
-            return ("Unknown", null, null, null, null);
         }
 
         private string GetGpuDriverVersion(string gpuName)

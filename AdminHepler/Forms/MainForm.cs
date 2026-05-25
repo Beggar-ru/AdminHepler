@@ -503,6 +503,9 @@ namespace AdminHelper
                 UpdateMonitoringDisplay(info);
         }
 
+
+
+
         private void UpdateMonitoringDisplay(SystemInfo info)
         {
             // ── CPU ──────────────────────────────────────────────────────
